@@ -1,4 +1,4 @@
-// pub fn call_qbe() {
+// fn call_qbe() {
 //     let s = std::process::Command::new("qbe")
 //         .args(["-h"])
 //         .output()
@@ -6,18 +6,19 @@
 //     println!("{}", String::from_utf8(s.stdout).unwrap());
 // }
 
-use crate::{parser::AST, ASTNode};
+use crate::{parser::Ast, ASTNode};
+use std::path::PathBuf;
 
-pub trait Compiler {
-    fn compile(&self);
+pub struct Compiler {
+    ast: Ast,
 }
 
-impl Compiler for AST {
-    fn compile(&self) {
-        for node in self {
-            match node {
-                ASTNode::Print(message) => println!("{}", message),
-            }
-        }
+impl Compiler {
+    pub fn from_ast(ast: Ast) -> Self {
+        Self { ast }
+    }
+
+    pub fn compile(&self, output_file: PathBuf) {
+        println!("compiling into: {output_file:?}");
     }
 }

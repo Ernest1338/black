@@ -1,6 +1,7 @@
+use crate::{compiler::Compiler, interpreter::Interpreter};
+use std::fs::read_to_string;
+
 mod args;
-use crate::compiler::Compiler;
-use crate::interpreter::Interpreter;
 use args::get_args;
 
 mod compiler;
@@ -14,18 +15,23 @@ use parser::{lexer, parser, ASTNode};
 fn main() {
     let args = get_args();
 
-    let sourcecode = std::fs::read_to_string(args.input).unwrap();
+    let source_code = read_to_string(args.input).unwrap();
 
     // Lexical Analysis
-    let tokens = lexer(&sourcecode).expect("Lexer failed");
-    // println!("Tokens: {:?}", tokens);
+    let tokens = lexer(&source_code).expect("Lexer failed");
+    println!("Tokens: {:?}", tokens);
 
     // Parsing
     let ast = parser(&tokens).expect("Parser failed");
-    // println!("AST: {:?}", &ast);
+    println!("AST: {:?}", &ast);
 
-    ast.interpret();
-    ast.compile();
+    // Interpreter
+    let ast = parser(&tokens).expect("Parser failed");
+    let interpreter = Interpreter::from_ast(ast);
+    interpreter.run();
 
-    // call_qbe();
+    // Compiler
+    let ast = parser(&tokens).expect("Parser failed");
+    let compiler = Compiler::from_ast(ast);
+    compiler.compile(args.output);
 }

@@ -55,12 +55,12 @@ pub fn lexer(input: &str) -> Result<Vec<Token>, String> {
     Ok(tokens)
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum ASTNode {
     Print(String),
 }
 
-pub type AST = Vec<ASTNode>;
+pub type Ast = Vec<ASTNode>;
 
 pub fn parser(tokens: &[Token]) -> Result<Vec<ASTNode>, String> {
     let mut iter = tokens.iter();

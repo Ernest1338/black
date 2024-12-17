@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 const HELP: &str = "\
 Black Lang
 
@@ -8,13 +10,13 @@ FLAGS:
   -h, --help            Prints help information
 
 OPTIONS:
-  --output PATH         Sets an output path
+  --output PATH         Sets an output path (default: out.app)
 ";
 
 #[derive(Debug)]
 pub struct AppArgs {
-    pub input: std::path::PathBuf,
-    pub output: Option<std::path::PathBuf>,
+    pub input: PathBuf,
+    pub output: PathBuf,
 }
 
 fn parse_args() -> Result<AppArgs, pico_args::Error> {
@@ -28,7 +30,9 @@ fn parse_args() -> Result<AppArgs, pico_args::Error> {
 
     let args = AppArgs {
         // Parses an optional value from `&OsStr` using a specified function.
-        output: pargs.opt_value_from_os_str("--output", parse_path)?,
+        output: pargs
+            .opt_value_from_os_str("--output", parse_path)?
+            .unwrap_or(PathBuf::from("out.app")),
         // Parses a required free-standing/positional argument.
         input: pargs.free_from_str()?,
     };
