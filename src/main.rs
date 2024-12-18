@@ -12,6 +12,18 @@ mod interpreter;
 mod parser;
 use parser::{lexer, parser, ASTNode};
 
+pub struct State {
+    data_section: Vec<(String, String)>,
+}
+
+impl State {
+    pub fn new() -> Self {
+        Self {
+            data_section: Vec::new(),
+        }
+    }
+}
+
 fn main() {
     let args = get_args();
 
@@ -19,19 +31,20 @@ fn main() {
 
     // Lexical Analysis
     let tokens = lexer(&source_code).expect("Lexer failed");
-    println!("Tokens: {:?}", tokens);
+    // println!("Tokens: {:?}", tokens);
 
     // Parsing
     let ast = parser(&tokens).expect("Parser failed");
-    println!("AST: {:?}", &ast);
+    // println!("AST: {:?}", &ast);
 
     // Interpreter
-    let ast = parser(&tokens).expect("Parser failed");
-    let interpreter = Interpreter::from_ast(ast);
-    interpreter.run();
+    // let ast = parser(&tokens).expect("Parser failed");
+    // let interpreter = Interpreter::from_ast(ast);
+    // interpreter.run();
 
     // Compiler
     let ast = parser(&tokens).expect("Parser failed");
     let compiler = Compiler::from_ast(ast);
-    compiler.compile(args.output);
+    let ir = compiler.compile(args.output);
+    // println!("compiled:\n{}", ir);
 }

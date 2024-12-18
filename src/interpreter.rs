@@ -1,7 +1,7 @@
 use crate::{parser::Ast, ASTNode};
 
 pub struct Interpreter {
-    ast: Ast,
+    pub ast: Ast,
 }
 
 impl Interpreter {
