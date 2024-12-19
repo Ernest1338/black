@@ -19,18 +19,9 @@ impl FromStr for Token {
         } else if s.starts_with(')') {
             return Ok(Token::RightParen);
         } else if let Some(stripped) = s.strip_prefix('"') {
-            // string literal
-            let mut chars = stripped.chars().peekable();
-            let mut content = String::new();
-            while let Some(&c) = chars.peek() {
-                if c == '"' {
-                    let backslashes = content.chars().rev().take_while(|&ch| ch == '\\').count();
-                    if backslashes % 2 == 0 {
-                        // Even number of backslashes, so this quote ends the string
-                        return Ok(Token::StringLiteral(content));
-                    }
-                }
-                content.push(chars.next().unwrap());
+            if let Some(end_quote) = stripped.find('"') {
+                let string_content = &stripped[..end_quote];
+                return Ok(Token::StringLiteral(string_content.to_string()));
             }
         }
         Err(())
