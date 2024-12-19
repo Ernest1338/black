@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::{path::PathBuf, process::exit};
 
 const HELP: &str = "\
 Black Lang
@@ -50,8 +50,11 @@ pub fn get_args() -> AppArgs {
     match parse_args() {
         Ok(v) => v,
         Err(e) => {
-            eprintln!("Error: {}.", e);
-            std::process::exit(1);
+            match e {
+                pico_args::Error::MissingArgument => eprintln!("Error: No input files"),
+                _ => eprintln!("Error: {}", e),
+            }
+            exit(0);
         }
     }
 }

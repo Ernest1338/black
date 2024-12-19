@@ -1,3 +1,8 @@
+// TODO: remove those
+#![allow(unused_variables)]
+#![allow(unused_imports)]
+#![allow(dead_code)]
+
 use crate::{compiler::Compiler, interpreter::Interpreter};
 use std::fs::read_to_string;
 
@@ -5,7 +10,6 @@ mod args;
 use args::get_args;
 
 mod compiler;
-// use compiler::call_qbe;
 
 mod interpreter;
 
@@ -14,6 +18,12 @@ use parser::{lexer, parser, ASTNode};
 
 pub struct State {
     data_section: Vec<(String, String)>,
+}
+
+impl Default for State {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl State {
