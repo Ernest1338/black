@@ -41,10 +41,10 @@ fn main() {
 
     // Lexical Analysis
     let tokens = lexer(&source_code).expect("Lexer failed");
-    // println!("Tokens: {:?}", tokens);
+    println!("Tokens: {:?}", tokens);
 
     // Parsing
-    let ast = parser(&tokens).expect("Parser failed");
+    // let ast = parser(&tokens).expect("Parser failed");
     // println!("AST: {:?}", &ast);
 
     // Interpreter
@@ -53,8 +53,8 @@ fn main() {
     // interpreter.run();
 
     // Compiler
-    let ast = parser(&tokens).expect("Parser failed");
-    let compiler = Compiler::from_ast(ast);
-    let ir = compiler.compile(args.output);
+    // let ast = parser(&tokens).expect("Parser failed");
+    // let compiler = Compiler::from_ast(ast);
+    // let ir = compiler.compile(args.output);
     // println!("compiled:\n{}", ir);
 }
