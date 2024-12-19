@@ -9,6 +9,7 @@ pub enum Token {
     Minus,
     Mult,
     Comma,
+    Equals,
     Number(i64),
     StringLiteral(String),
     Identifier(String),
@@ -26,6 +27,7 @@ impl Token {
             | Token::Plus
             | Token::Minus
             | Token::Mult
+            | Token::Equals
             | Token::Comma => 1,
         }
     }
@@ -72,6 +74,7 @@ impl FromStr for Token {
             Some('*') => Ok(Token::Mult),
             Some('(') => Ok(Token::LeftParen),
             Some(')') => Ok(Token::RightParen),
+            Some('=') => Ok(Token::Equals),
             Some(',') => Ok(Token::Comma),
             _ => Err(()),
         }
