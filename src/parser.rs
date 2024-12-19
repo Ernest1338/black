@@ -8,6 +8,17 @@ pub enum Token {
     StringLiteral(String),
 }
 
+impl Token {
+    fn len(&self) -> usize {
+        match self {
+            Token::Print => 5,
+            Token::LeftParen => 1,
+            Token::RightParen => 1,
+            Token::StringLiteral(s) => s.len() + 2, // Includes quotes
+        }
+    }
+}
+
 impl FromStr for Token {
     type Err = ();
 
@@ -38,12 +49,7 @@ pub fn lexer(input: &str) -> Result<Vec<Token>, String> {
         while !remaining.is_empty() {
             match Token::from_str(remaining) {
                 Ok(token) => {
-                    let token_length = match &token {
-                        Token::Print => "print".len(),
-                        Token::LeftParen => "(".len(),
-                        Token::RightParen => ")".len(),
-                        Token::StringLiteral(s) => s.len() + 2, // Including quotes
-                    };
+                    let token_length = token.len();
                     remaining = remaining[token_length..].trim_start();
                     tokens.push(token);
                 }
