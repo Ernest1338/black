@@ -72,6 +72,7 @@ impl Compiler {
     }
 
     pub fn compile(&self, output_file: PathBuf) -> String {
+        // TODO: abstractions
         let mut ir = String::new();
         let mut data_sections = String::new();
 
@@ -94,7 +95,8 @@ impl Compiler {
         ir.push_str("  ret 0\n}");
 
         let ir = format!("{}\n{}", data_sections, ir);
-        ir_to_bin(&ir, output_file.to_str().expect("invalid output file"));
+        let out_file_str = output_file.to_str().expect("invalid output file");
+        ir_to_bin(&ir, out_file_str);
 
         ir
     }

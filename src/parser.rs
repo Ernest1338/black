@@ -19,9 +19,18 @@ impl FromStr for Token {
         } else if s.starts_with(')') {
             return Ok(Token::RightParen);
         } else if let Some(stripped) = s.strip_prefix('"') {
-            if let Some(end_quote) = stripped.find('"') {
-                let string_content = &stripped[..end_quote];
-                return Ok(Token::StringLiteral(string_content.to_string()));
+            // string literal
+            let mut chars = stripped.chars().peekable();
+            let mut content = String::new();
+            while let Some(&c) = chars.peek() {
+                if c == '"' {
+                    let backslashes = content.chars().rev().take_while(|&ch| ch == '\\').count();
+                    if backslashes % 2 == 0 {
+                        // Even number of backslashes, so this quote ends the string
+                        return Ok(Token::StringLiteral(content));
+                    }
+                }
+                content.push(chars.next().unwrap());
             }
         }
         Err(())
@@ -69,19 +78,20 @@ pub fn parser(tokens: &[Token]) -> Result<Vec<ASTNode>, String> {
     while let Some(token) = iter.next() {
         match token {
             Token::Print => {
-                if let Some(Token::LeftParen) = iter.next() {
-                    if let Some(Token::StringLiteral(s)) = iter.next() {
-                        if let Some(Token::RightParen) = iter.next() {
-                            ast_nodes.push(ASTNode::Print(s.clone()));
-                        } else {
-                            return Err("Expected ')'".to_string());
-                        }
-                    } else {
-                        return Err("Expected string literal".to_string());
-                    }
-                } else {
+                if iter.next() != Some(&Token::LeftParen) {
                     return Err("Expected '(' after 'print'".to_string());
                 }
+
+                let string_literal = match iter.next() {
+                    Some(Token::StringLiteral(s)) => s.clone(),
+                    _ => return Err("Expected string literal".to_string()),
+                };
+
+                if iter.next() != Some(&Token::RightParen) {
+                    return Err("Expected ')'".to_string());
+                }
+
+                ast_nodes.push(ASTNode::Print(string_literal));
             }
             _ => return Err(format!("Invalid token: {:?}", token)),
         }
