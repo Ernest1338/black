@@ -81,10 +81,16 @@ impl FromStr for Token {
     }
 }
 
+pub fn preprocess(code: &str) -> String {
+    // handle comments
+    code.lines().filter(|x| !x.starts_with("//")).collect()
+}
+
 pub fn lexer(input: &str) -> Result<Vec<Token>, String> {
     let mut tokens = Vec::new();
 
-    // Process each line separately
+    // FIXME: join into one line instead of processing each separately.
+    //        Language should not care about new line characters
     for line in input.lines() {
         let mut remaining = line.trim();
 

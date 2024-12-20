@@ -1,4 +1,5 @@
 print("hello, world")
+// let asdf = 123
 
 print("hello, sailman")
-print(1+c)
+// print(1+1)

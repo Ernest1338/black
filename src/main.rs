@@ -14,7 +14,7 @@ mod compiler;
 mod interpreter;
 
 mod parser;
-use parser::{lexer, parser, ASTNode};
+use parser::{lexer, parser, preprocess, ASTNode};
 
 pub struct State {
     data_section: Vec<(String, String)>,
@@ -39,13 +39,16 @@ fn main() {
 
     let source_code = read_to_string(args.input).unwrap();
 
+    // Preprocessing
+    let source_code = preprocess(&source_code);
+
     // Lexical Analysis
     let tokens = lexer(&source_code).expect("Lexer failed");
     println!("Tokens: {:?}", tokens);
 
     // Parsing
-    // let ast = parser(&tokens).expect("Parser failed");
-    // println!("AST: {:?}", &ast);
+    let ast = parser(&tokens).expect("Parser failed");
+    println!("AST: {:?}", &ast);
 
     // Interpreter
     // let ast = parser(&tokens).expect("Parser failed");

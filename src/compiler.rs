@@ -96,7 +96,7 @@ impl Compiler {
 
         let ir = format!("{}\n{}", data_sections, ir);
         let out_file_str = output_file.to_str().expect("invalid output file");
-        // ir_to_bin(&ir, out_file_str);
+        ir_to_bin(&ir, out_file_str);
 
         ir
     }
