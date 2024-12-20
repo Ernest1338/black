@@ -3,6 +3,7 @@ use std::str::FromStr;
 #[derive(Debug, PartialEq, Clone)]
 pub enum Token {
     Print, // TODO: refactor into a function call
+    Let,
     LeftParen,
     RightParen,
     Plus,
@@ -19,6 +20,7 @@ impl Token {
     fn len(&self) -> usize {
         match self {
             Token::Print => 5,
+            Token::Let => 3,
             Token::StringLiteral(s) => s.len() + 2, // Includes quotes
             Token::Number(n) => n.to_string().len(),
             Token::Identifier(s) => s.len(),
@@ -49,8 +51,15 @@ impl FromStr for Token {
         }
 
         // Token::Print
-        if s.starts_with("print") && s[5..].starts_with(|c: char| c.is_whitespace() || c == '(') {
+        if s.starts_with("print")
+            && s[Token::Print.len()..].starts_with(|c: char| c.is_whitespace() || c == '(')
+        {
             return Ok(Token::Print);
+        }
+
+        // Token::Let
+        if s.starts_with("let") && s[Token::Let.len()..].starts_with(|c: char| c.is_whitespace()) {
+            return Ok(Token::Let);
         }
 
         // Token::StringLiteral

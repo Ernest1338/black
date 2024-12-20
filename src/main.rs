@@ -3,15 +3,15 @@
 #![allow(unused_imports)]
 #![allow(dead_code)]
 
-use crate::{compiler::Compiler, interpreter::Interpreter};
+// use crate::{compiler::Compiler, interpreter::Interpreter};
 use std::fs::read_to_string;
 
 mod args;
 use args::get_args;
 
-mod compiler;
+// mod compiler;
 
-mod interpreter;
+// mod interpreter;
 
 mod parser;
 use parser::{lexer, parser, preprocess, ASTNode};
