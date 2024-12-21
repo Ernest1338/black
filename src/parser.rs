@@ -85,7 +85,10 @@ impl FromStr for Token {
 }
 
 pub fn preprocess(code: &str) -> String {
-    code.lines().filter(|x| !x.starts_with("//")).collect()
+    code.lines()
+        .filter(|x| !x.starts_with("//"))
+        .collect::<Vec<&str>>()
+        .join(" ")
 }
 
 pub fn lexer(input: &str) -> Result<Vec<Token>, String> {

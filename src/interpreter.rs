@@ -116,6 +116,7 @@ impl Interpreter {
                 Expr::StringLiteral(s) => print!("{s}"),
                 _ => eprintln!("Invalid argument to print"),
             }
+            print!(" ");
         }
 
         println!();

@@ -1,6 +1,9 @@
 // print function call
 print("hello, world")
 
+// printing multiple things
+print("hello", 123)
+
 // variable declaration
 let asdf = "hello, sailor"
 
@@ -17,4 +20,5 @@ print(qwer)
 // adding two variables together
 let a = 1
 let b = 2
-print(a + b)
+let c = a + b
+print(c, a + b)
