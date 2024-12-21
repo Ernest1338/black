@@ -1,5 +1,8 @@
+// print function call
 print("hello, world")
-// let asdf = 123
 
-print("hello, sailman")
-// print(1+1)
+// variable declaration
+let asdf = 123
+
+// print binary expression
+print(1 + 1)

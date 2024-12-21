@@ -14,7 +14,7 @@ use args::get_args;
 // mod interpreter;
 
 mod parser;
-use parser::{lexer, parser, preprocess, ASTNode};
+use parser::{lexer, Parser, preprocess, Expr};
 
 pub struct State {
     data_section: Vec<(String, String)>,
@@ -47,8 +47,9 @@ fn main() {
     println!("Tokens: {:?}", tokens);
 
     // Parsing
-    let ast = parser(&tokens).expect("Parser failed");
-    println!("AST: {:?}", &ast);
+    let mut parser = Parser::new(&tokens);
+    let ast = parser.parse().expect("Parser failed");
+    println!("AST: {:#?}", &ast);
 
     // Interpreter
     // let ast = parser(&tokens).expect("Parser failed");

@@ -1,14 +1,15 @@
+use std::iter::Peekable;
 use std::str::FromStr;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Token {
-    Print, // TODO: refactor into a function call
     Let,
     LeftParen,
     RightParen,
     Plus,
     Minus,
-    Mult,
+    Multiply,
+    Divide,
     Comma,
     Equals,
     Number(i64),
@@ -19,7 +20,6 @@ pub enum Token {
 impl Token {
     fn len(&self) -> usize {
         match self {
-            Token::Print => 5,
             Token::Let => 3,
             Token::StringLiteral(s) => s.len() + 2, // Includes quotes
             Token::Number(n) => n.to_string().len(),
@@ -28,7 +28,8 @@ impl Token {
             | Token::RightParen
             | Token::Plus
             | Token::Minus
-            | Token::Mult
+            | Token::Multiply
+            | Token::Divide
             | Token::Equals
             | Token::Comma => 1,
         }
@@ -50,14 +51,6 @@ impl FromStr for Token {
             }
         }
 
-        // Token::Print
-        if s.starts_with("print")
-            && s[Token::Print.len()..].starts_with(|c: char| c.is_whitespace() || c == '(')
-        {
-            return Ok(Token::Print);
-        }
-
-        // Token::Let
         if s.starts_with("let") && s[Token::Let.len()..].starts_with(|c: char| c.is_whitespace()) {
             return Ok(Token::Let);
         }
@@ -80,7 +73,8 @@ impl FromStr for Token {
         match s.chars().next() {
             Some('+') => Ok(Token::Plus),
             Some('-') => Ok(Token::Minus),
-            Some('*') => Ok(Token::Mult),
+            Some('*') => Ok(Token::Multiply),
+            Some('/') => Ok(Token::Divide),
             Some('(') => Ok(Token::LeftParen),
             Some(')') => Ok(Token::RightParen),
             Some('=') => Ok(Token::Equals),
@@ -91,18 +85,13 @@ impl FromStr for Token {
 }
 
 pub fn preprocess(code: &str) -> String {
-    // handle comments
     code.lines().filter(|x| !x.starts_with("//")).collect()
 }
 
 pub fn lexer(input: &str) -> Result<Vec<Token>, String> {
     let mut tokens = Vec::new();
-
-    // FIXME: join into one line instead of processing each separately.
-    //        Language should not care about new line characters
     for line in input.lines() {
         let mut remaining = line.trim();
-
         while !remaining.is_empty() {
             match Token::from_str(remaining) {
                 Ok(token) => {
@@ -114,42 +103,189 @@ pub fn lexer(input: &str) -> Result<Vec<Token>, String> {
             }
         }
     }
-
     Ok(tokens)
 }
 
 #[derive(Debug, Clone)]
-pub enum ASTNode {
-    Print(String),
+pub enum Expr {
+    FuncCall(FuncCall),
+    VariableDeclaration(Box<VariableDeclaration>),
+    BinExpr(Box<BinExpr>),
+    Number(i64),
+    Identifier(String),
+    StringLiteral(String),
 }
 
-pub type Ast = Vec<ASTNode>;
+#[derive(Debug, Clone)]
+pub struct VariableDeclaration {
+    pub identifier: String,
+    pub value: Expr,
+}
 
-pub fn parser(tokens: &[Token]) -> Result<Vec<ASTNode>, String> {
-    let mut iter = tokens.iter();
-    let mut ast_nodes = Vec::new();
+#[derive(Debug, Clone)]
+pub struct FuncCall {
+    pub name: String,
+    pub arguments: Vec<Expr>,
+}
 
-    while let Some(token) = iter.next() {
-        match token {
-            Token::Print => {
-                if iter.next() != Some(&Token::LeftParen) {
-                    return Err("Expected '(' after 'print'".to_string());
-                }
+#[derive(Debug, Clone)]
+pub struct BinExpr {
+    pub lhs: Expr,
+    pub kind: BinOpKind,
+    pub rhs: Expr,
+}
 
-                let string_literal = match iter.next() {
-                    Some(Token::StringLiteral(s)) => s.clone(),
-                    _ => return Err("Expected string literal".to_string()),
-                };
+#[derive(Debug, Clone)]
+pub enum BinOpKind {
+    Plus,
+    Minus,
+    Multiply,
+    Divide,
+}
 
-                if iter.next() != Some(&Token::RightParen) {
-                    return Err("Expected ')'".to_string());
-                }
+pub type Ast = Vec<Expr>;
 
-                ast_nodes.push(ASTNode::Print(string_literal));
-            }
-            _ => return Err(format!("Invalid token: {:?}", token)),
+// Parser struct that wraps the Peekable iterator
+pub struct Parser<'a> {
+    iter: Peekable<std::slice::Iter<'a, Token>>,
+}
+
+impl<'a> Parser<'a> {
+    pub fn new(tokens: &'a [Token]) -> Self {
+        Parser {
+            iter: tokens.iter().peekable(),
         }
     }
 
-    Ok(ast_nodes)
+    // Parse primary expressions (number, identifier, etc.)
+    pub fn parse_primary(&mut self) -> Result<Expr, String> {
+        match self.iter.next() {
+            Some(Token::Number(n)) => Ok(Expr::Number(*n)),
+            Some(Token::Identifier(name)) => {
+                if let Some(Token::LeftParen) = self.iter.peek() {
+                    self.parse_func_call(name)
+                } else {
+                    Ok(Expr::Identifier(name.to_owned()))
+                }
+            }
+            Some(Token::StringLiteral(s)) => Ok(Expr::StringLiteral(s.to_owned())), // Handle StringLiteral
+            Some(Token::LeftParen) => {
+                let expr = self.parse_expr()?;
+                if self.iter.next() != Some(&Token::RightParen) {
+                    return Err("Expected ')'".to_string());
+                }
+                Ok(expr)
+            }
+            Some(token) => Err(format!("Unexpected token: {:?}", token)),
+            None => Err("Unexpected end of input".to_string()),
+        }
+    }
+
+    // Parse function calls
+    fn parse_func_call(&mut self, name: &str) -> Result<Expr, String> {
+        let mut args = Vec::new();
+
+        // Consume the opening parenthesis '('
+        if self.iter.next() != Some(&Token::LeftParen) {
+            return Err("Expected '(' after function name".to_string());
+        }
+
+        // Parse arguments until a closing parenthesis ')'
+        loop {
+            match self.iter.peek() {
+                Some(Token::RightParen) => {
+                    self.iter.next(); // Consume the closing parenthesis ')'
+                    break; // Exit the loop after finding the closing parenthesis
+                }
+                Some(Token::Comma) => {
+                    self.iter.next(); // Consume the comma and continue parsing arguments
+                }
+                Some(_) => {
+                    // Parse the next argument in the function call
+                    args.push(self.parse_expr()?);
+                }
+                None => {
+                    return Err("Unexpected end of input, expected ')'".to_string());
+                }
+            }
+        }
+
+        // Return the function call expression with arguments
+        Ok(Expr::FuncCall(FuncCall {
+            name: name.to_string(),
+            arguments: args,
+        }))
+    }
+
+    // Parse binary expressions (e.g., addition, multiplication)
+    pub fn parse_binary(
+        &mut self,
+        parse_operand: fn(&mut Self) -> Result<Expr, String>,
+        operators: &[Token],
+        make_node: fn(Box<Expr>, BinOpKind, Box<Expr>) -> Expr,
+    ) -> Result<Expr, String> {
+        let mut left = parse_operand(self)?;
+        while let Some(op) = self.iter.peek() {
+            if operators.contains(op) {
+                let operator = match op {
+                    Token::Plus => BinOpKind::Plus,
+                    Token::Minus => BinOpKind::Minus,
+                    Token::Multiply => BinOpKind::Multiply,
+                    Token::Divide => BinOpKind::Divide,
+                    _ => unreachable!(),
+                };
+                self.iter.next(); // Consume operator
+                let right = parse_operand(self)?;
+                left = make_node(Box::new(left), operator, Box::new(right));
+            } else {
+                break;
+            }
+        }
+        Ok(left)
+    }
+
+    // Parse expressions
+    pub fn parse_expr(&mut self) -> Result<Expr, String> {
+        self.parse_binary(
+            |parser| parser.parse_primary(),
+            &[Token::Multiply, Token::Divide, Token::Plus, Token::Minus],
+            |lhs, kind, rhs| {
+                Expr::BinExpr(Box::new(BinExpr {
+                    lhs: *lhs,
+                    kind,
+                    rhs: *rhs,
+                }))
+            },
+        )
+    }
+
+    // Parse the full program (top-level)
+    pub fn parse(&mut self) -> Result<Ast, String> {
+        let mut ast = Vec::new();
+        while let Some(token) = self.iter.peek() {
+            match token {
+                Token::Let => {
+                    self.iter.next(); // Consume `Let`
+                    if let Some(Token::Identifier(name)) = self.iter.next() {
+                        if let Some(Token::Equals) = self.iter.next() {
+                            let value = self.parse_expr()?;
+                            ast.push(Expr::VariableDeclaration(Box::new(VariableDeclaration {
+                                identifier: name.clone(),
+                                value,
+                            })));
+                        } else {
+                            return Err("Expected '=' after variable name".to_string());
+                        }
+                    } else {
+                        return Err("Expected identifier after 'let'".to_string());
+                    }
+                }
+                _ => {
+                    let expr = self.parse_expr()?;
+                    ast.push(expr);
+                }
+            }
+        }
+        Ok(ast)
+    }
 }
