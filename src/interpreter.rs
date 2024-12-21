@@ -44,6 +44,7 @@ impl Interpreter {
                         match &variable_declaration.value {
                             Expr::Number(n) => Variable::Number(*n),
                             Expr::StringLiteral(s) => Variable::StringLiteral(s.to_owned()),
+                            Expr::BinExpr(bin_expr) => Variable::Number(Self::handle_bin_expr(&bin_expr)),
                             _ => {
                                 eprintln!("Error: Can only store strings and numbers in variables");
                                 exit(1);
