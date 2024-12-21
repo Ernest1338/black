@@ -69,31 +69,25 @@ impl Interpreter {
         exit(1);
     }
 
+    fn eval_operand(&self, operand: &Expr) -> i64 {
+        match operand {
+            Expr::BinExpr(bin_expr) => self.handle_bin_expr(bin_expr),
+            Expr::Number(n) => *n,
+            Expr::Identifier(i) => match self.get_var(i) {
+                Variable::Number(n) => n,
+                _ => {
+                    eprintln!("Error: cannot add variable which is not a number");
+                    exit(1);
+                }
+            },
+            _ => todo!(),
+        }
+    }
+
     fn handle_bin_expr(&self, bin_expr: &BinExpr) -> i64 {
-        let lhs = match &bin_expr.lhs {
-            Expr::BinExpr(bin_expr) => &self.handle_bin_expr(bin_expr),
-            Expr::Number(n) => n,
-            Expr::Identifier(i) => &match self.get_var(i) {
-                Variable::Number(n) => n,
-                _ => {
-                    eprintln!("Error: can not add variable which is not a number");
-                    exit(1);
-                }
-            },
-            _ => todo!(),
-        };
-        let rhs = match &bin_expr.rhs {
-            Expr::BinExpr(bin_expr) => &self.handle_bin_expr(bin_expr),
-            Expr::Number(n) => n,
-            Expr::Identifier(i) => &match self.get_var(i) {
-                Variable::Number(n) => n,
-                _ => {
-                    eprintln!("Error: can not add variable which is not a number");
-                    exit(1);
-                }
-            },
-            _ => todo!(),
-        };
+        let lhs = self.eval_operand(&bin_expr.lhs);
+        let rhs = self.eval_operand(&bin_expr.rhs);
+
         match bin_expr.kind {
             BinOpKind::Plus => lhs + rhs,
             BinOpKind::Minus => lhs - rhs,
@@ -103,22 +97,27 @@ impl Interpreter {
     }
 
     fn handle_func_call(&self, func_call: &FuncCall) {
-        if func_call.name != "print" {
-            println!("Error: prints only supported for now");
-        }
+        match func_call.name.as_ref() {
+            "print" => {
+                for arg in &func_call.arguments {
+                    match arg {
+                        Expr::FuncCall(func_call) => self.handle_func_call(func_call),
+                        Expr::BinExpr(bin_expr) => print!("{}", self.handle_bin_expr(bin_expr)),
+                        Expr::Number(n) => print!("{n}"),
+                        Expr::Identifier(i) => print!("{}", self.get_var(i)),
+                        Expr::StringLiteral(s) => print!("{s}"),
+                        _ => eprintln!("Invalid argument to print"),
+                    }
+                    print!(" ");
+                }
 
-        for arg in &func_call.arguments {
-            match arg {
-                Expr::FuncCall(func_call) => self.handle_func_call(func_call),
-                Expr::BinExpr(bin_expr) => print!("{}", self.handle_bin_expr(bin_expr)),
-                Expr::Number(n) => print!("{n}"),
-                Expr::Identifier(i) => print!("{}", self.get_var(i)),
-                Expr::StringLiteral(s) => print!("{s}"),
-                _ => eprintln!("Invalid argument to print"),
+                println!();
             }
-            print!(" ");
+            _ => {
+                // TODO: handle user defined functions
+                eprintln!("Error: unknown function: {}", &func_call.name);
+                exit(1);
+            }
         }
-
-        println!();
     }
 }
