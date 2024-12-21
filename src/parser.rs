@@ -86,6 +86,7 @@ impl FromStr for Token {
 }
 
 pub fn preprocess(code: &str) -> String {
+    // Handle comments
     code.lines()
         .filter(|x| !x.starts_with("//"))
         .collect::<Vec<&str>>()
@@ -249,47 +250,48 @@ impl<'a> Parser<'a> {
         Ok(left)
     }
 
+    // Parse variable declarationds
+    pub fn parse_variable_declaration(&mut self) -> Result<Expr, String> {
+        self.iter.next(); // Consume `Token::Let`
+        if let Some(Token::Identifier(name)) = self.iter.next() {
+            if let Some(Token::Equals) = self.iter.next() {
+                let value = self.parse_expr()?;
+                Ok(Expr::VariableDeclaration(Box::new(VariableDeclaration {
+                    identifier: name.clone(),
+                    value,
+                })))
+            } else {
+                Err("Expected '=' after variable name".to_string())
+            }
+        } else {
+            Err("Expected identifier after 'let'".to_string())
+        }
+    }
+
     // Parse expressions
     pub fn parse_expr(&mut self) -> Result<Expr, String> {
-        self.parse_binary(
-            |parser| parser.parse_primary(),
-            &[Token::Multiply, Token::Divide, Token::Plus, Token::Minus],
-            |lhs, kind, rhs| {
-                Expr::BinExpr(Box::new(BinExpr {
-                    lhs: *lhs,
-                    kind,
-                    rhs: *rhs,
-                }))
-            },
-        )
+        match self.iter.peek() {
+            Some(Token::Let) => self.parse_variable_declaration(),
+            _ => self.parse_binary(
+                |parser| parser.parse_primary(),
+                &[Token::Multiply, Token::Divide, Token::Plus, Token::Minus],
+                |lhs, kind, rhs| {
+                    Expr::BinExpr(Box::new(BinExpr {
+                        lhs: *lhs,
+                        kind,
+                        rhs: *rhs,
+                    }))
+                },
+            ),
+        }
     }
 
     // Parse the full program (top-level)
     pub fn parse(&mut self) -> Result<Ast, String> {
         let mut ast = Vec::new();
         while let Some(token) = self.iter.peek() {
-            match token {
-                Token::Let => {
-                    self.iter.next(); // Consume `Let`
-                    if let Some(Token::Identifier(name)) = self.iter.next() {
-                        if let Some(Token::Equals) = self.iter.next() {
-                            let value = self.parse_expr()?;
-                            ast.push(Expr::VariableDeclaration(Box::new(VariableDeclaration {
-                                identifier: name.clone(),
-                                value,
-                            })));
-                        } else {
-                            return Err("Expected '=' after variable name".to_string());
-                        }
-                    } else {
-                        return Err("Expected identifier after 'let'".to_string());
-                    }
-                }
-                _ => {
-                    let expr = self.parse_expr()?;
-                    ast.push(expr);
-                }
-            }
+            let expr = self.parse_expr()?;
+            ast.push(expr);
         }
         Ok(ast)
     }
