@@ -36,7 +36,7 @@ impl Interpreter {
         for node in &self.ast {
             match node {
                 Expr::FuncCall(func_call) => {
-                    self.handle_func_call(&func_call);
+                    self.handle_func_call(func_call);
                 }
                 Expr::VariableDeclaration(variable_declaration) => {
                     self.variables.insert(
@@ -45,7 +45,7 @@ impl Interpreter {
                             Expr::Number(n) => Variable::Number(*n),
                             Expr::StringLiteral(s) => Variable::StringLiteral(s.to_owned()),
                             Expr::BinExpr(bin_expr) => {
-                                Variable::Number(self.handle_bin_expr(&bin_expr))
+                                Variable::Number(self.handle_bin_expr(bin_expr))
                             }
                             _ => {
                                 eprintln!("Error: Can only store strings and numbers in variables");
@@ -71,7 +71,7 @@ impl Interpreter {
 
     fn handle_bin_expr(&self, bin_expr: &BinExpr) -> i64 {
         let lhs = match &bin_expr.lhs {
-            Expr::BinExpr(bin_expr) => &self.handle_bin_expr(&bin_expr),
+            Expr::BinExpr(bin_expr) => &self.handle_bin_expr(bin_expr),
             Expr::Number(n) => n,
             Expr::Identifier(i) => &match self.get_var(i) {
                 Variable::Number(n) => n,
@@ -83,7 +83,7 @@ impl Interpreter {
             _ => todo!(),
         };
         let rhs = match &bin_expr.rhs {
-            Expr::BinExpr(bin_expr) => &self.handle_bin_expr(&bin_expr),
+            Expr::BinExpr(bin_expr) => &self.handle_bin_expr(bin_expr),
             Expr::Number(n) => n,
             Expr::Identifier(i) => &match self.get_var(i) {
                 Variable::Number(n) => n,
@@ -109,8 +109,8 @@ impl Interpreter {
 
         for arg in &func_call.arguments {
             match arg {
-                Expr::FuncCall(func_call) => self.handle_func_call(&func_call),
-                Expr::BinExpr(bin_expr) => print!("{}", self.handle_bin_expr(&bin_expr)),
+                Expr::FuncCall(func_call) => self.handle_func_call(func_call),
+                Expr::BinExpr(bin_expr) => print!("{}", self.handle_bin_expr(bin_expr)),
                 Expr::Number(n) => print!("{n}"),
                 Expr::Identifier(i) => print!("{}", self.get_var(i)),
                 Expr::StringLiteral(s) => print!("{s}"),

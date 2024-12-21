@@ -51,6 +51,7 @@ impl FromStr for Token {
             }
         }
 
+        // Token::Let
         if s.starts_with("let") && s[Token::Let.len()..].starts_with(|c: char| c.is_whitespace()) {
             return Ok(Token::Let);
         }
@@ -110,6 +111,7 @@ pub fn lexer(input: &str) -> Result<Vec<Token>, String> {
 }
 
 #[derive(Debug, Clone)]
+#[allow(clippy::enum_variant_names)]
 pub enum Expr {
     FuncCall(FuncCall),
     VariableDeclaration(Box<VariableDeclaration>),
