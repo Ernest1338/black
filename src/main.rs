@@ -3,15 +3,15 @@
 #![allow(unused_imports)]
 #![allow(dead_code)]
 
-// use crate::{compiler::Compiler, interpreter::Interpreter};
+use crate::{compiler::Compiler, interpreter::Interpreter};
 use std::fs::read_to_string;
 
 mod args;
 use args::get_args;
 
-// mod compiler;
+mod compiler;
 
-// mod interpreter;
+mod interpreter;
 
 mod parser;
 use parser::{lexer, Parser, preprocess, Expr};
@@ -44,17 +44,16 @@ fn main() {
 
     // Lexical Analysis
     let tokens = lexer(&source_code).expect("Lexer failed");
-    println!("Tokens: {:?}", tokens);
+    // println!("Tokens: {:?}", tokens);
 
     // Parsing
     let mut parser = Parser::new(&tokens);
     let ast = parser.parse().expect("Parser failed");
-    println!("AST: {:#?}", &ast);
+    // println!("AST: {:#?}", &ast);
 
     // Interpreter
-    // let ast = parser(&tokens).expect("Parser failed");
-    // let interpreter = Interpreter::from_ast(ast);
-    // interpreter.run();
+    let mut interpreter = Interpreter::from_ast(ast);
+    interpreter.run();
 
     // Compiler
     // let ast = parser(&tokens).expect("Parser failed");

@@ -5,4 +5,7 @@ print("hello, world")
 let asdf = 123
 
 // print binary expression
-print(1 + 1)
+print(1 + 1 + 67)
+
+// printing variable
+print(asdf)

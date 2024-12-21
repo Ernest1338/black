@@ -1,4 +1,4 @@
-use crate::{parser::Ast, ASTNode, State};
+use crate::{parser::Ast, Expr, State};
 use std::{
     io::{Read, Write},
     path::PathBuf,
@@ -71,33 +71,33 @@ impl Compiler {
         }
     }
 
-    pub fn compile(&self, output_file: PathBuf) -> String {
-        // TODO: abstractions
-        let mut ir = String::new();
-        let mut data_sections = String::new();
-
-        ir.push_str("export function w $main() {\n@start\n");
-
-        for (i, node) in self.ast.iter().enumerate() {
-            match node {
-                ASTNode::Print(message) => {
-                    let data_label = format!("$str{}", i);
-                    data_sections.push_str(&format!(
-                        "data {} = {{ b \"{}\", b 0 }}\n",
-                        data_label,
-                        message.replace("\\", "\\\\").replace("\"", "\\\"")
-                    ));
-                    ir.push_str(&format!("  %r{} =w call $puts(l {})\n", i, data_label));
-                }
-            }
-        }
-
-        ir.push_str("  ret 0\n}");
-
-        let ir = format!("{}\n{}", data_sections, ir);
-        let out_file_str = output_file.to_str().expect("invalid output file");
-        ir_to_bin(&ir, out_file_str);
-
-        ir
-    }
+    // pub fn compile(&self, output_file: PathBuf) -> String {
+    //     // TODO: abstractions
+    //     let mut ir = String::new();
+    //     let mut data_sections = String::new();
+    //
+    //     ir.push_str("export function w $main() {\n@start\n");
+    //
+    //     for (i, node) in self.ast.iter().enumerate() {
+    //         match node {
+    //             ASTNode::Print(message) => {
+    //                 let data_label = format!("$str{}", i);
+    //                 data_sections.push_str(&format!(
+    //                     "data {} = {{ b \"{}\", b 0 }}\n",
+    //                     data_label,
+    //                     message.replace("\\", "\\\\").replace("\"", "\\\"")
+    //                 ));
+    //                 ir.push_str(&format!("  %r{} =w call $puts(l {})\n", i, data_label));
+    //             }
+    //         }
+    //     }
+    //
+    //     ir.push_str("  ret 0\n}");
+    //
+    //     let ir = format!("{}\n{}", data_sections, ir);
+    //     let out_file_str = output_file.to_str().expect("invalid output file");
+    //     ir_to_bin(&ir, out_file_str);
+    //
+    //     ir
+    // }
 }
