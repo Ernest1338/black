@@ -13,3 +13,8 @@ print(asdf)
 // creating a variable containing bin expr and printing it
 let qwer = 1 + 1
 print(qwer)
+
+// adding two variables together
+let a = 1
+let b = 2
+print(a + b)
