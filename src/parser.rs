@@ -289,7 +289,7 @@ impl<'a> Parser<'a> {
     // Parse the full program (top-level)
     pub fn parse(&mut self) -> Result<Ast, String> {
         let mut ast = Vec::new();
-        while let Some(token) = self.iter.peek() {
+        while let Some(_token) = self.iter.peek() {
             let expr = self.parse_expr()?;
             ast.push(expr);
         }

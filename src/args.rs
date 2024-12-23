@@ -11,11 +11,13 @@ FLAGS:
 
 OPTIONS:
   --output PATH         Sets an output path (default: out.app)
+  -i, --interpreter     Use interpreter instead of compiling to a binary
 ";
 
 #[derive(Debug)]
 pub struct AppArgs {
     pub input: PathBuf,
+    pub interpreter: bool,
     pub output: PathBuf,
 }
 
@@ -28,11 +30,14 @@ fn parse_args() -> Result<AppArgs, pico_args::Error> {
         std::process::exit(0);
     }
 
+    let interpreter = pargs.contains(["-i", "--interpreter"]);
+
     let args = AppArgs {
         // Parses an optional value from `&OsStr` using a specified function.
         output: pargs
             .opt_value_from_os_str("--output", parse_path)?
             .unwrap_or(PathBuf::from("out.app")),
+        interpreter,
         // Parses a required free-standing/positional argument.
         input: pargs.free_from_str()?,
     };

@@ -1,8 +1,3 @@
-// TODO: remove those
-#![allow(unused_variables)]
-#![allow(unused_imports)]
-#![allow(dead_code)]
-
 use crate::{compiler::Compiler, interpreter::Interpreter};
 use std::fs::read_to_string;
 
@@ -14,30 +9,13 @@ mod compiler;
 mod interpreter;
 
 mod parser;
-use parser::{lexer, Parser, preprocess, Expr};
-
-pub struct State {
-    data_section: Vec<(String, String)>,
-}
-
-impl Default for State {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl State {
-    pub fn new() -> Self {
-        Self {
-            data_section: Vec::new(),
-        }
-    }
-}
+use parser::{lexer, preprocess, Expr, Parser};
 
 fn main() {
     let args = get_args();
 
-    let source_code = read_to_string(args.input).unwrap();
+    // Reading source code
+    let source_code = read_to_string(args.input).expect("Error: can not read source code file");
 
     // Preprocessing
     let source_code = preprocess(&source_code);
@@ -51,13 +29,13 @@ fn main() {
     let ast = parser.parse().expect("Parser failed");
     // println!("AST: {:#?}", &ast);
 
-    // Interpreter
-    let mut interpreter = Interpreter::from_ast(ast);
-    interpreter.run();
-
-    // Compiler
-    // let ast = parser(&tokens).expect("Parser failed");
-    // let compiler = Compiler::from_ast(ast);
-    // let ir = compiler.compile(args.output);
-    // println!("compiled:\n{}", ir);
+    if args.interpreter {
+        // Interpreter
+        let mut interpreter = Interpreter::from_ast(ast);
+        interpreter.run();
+    } else {
+        // Compiler
+        let compiler = Compiler::from_ast(ast);
+        compiler.compile(args.output);
+    }
 }
