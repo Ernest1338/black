@@ -32,6 +32,13 @@ impl Interpreter {
         }
     }
 
+    pub fn default() -> Self {
+        Self {
+            ast: Ast::default(),
+            variables: HashMap::new(),
+        }
+    }
+
     pub fn run(&mut self) {
         for node in &self.ast {
             match node {

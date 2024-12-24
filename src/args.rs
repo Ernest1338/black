@@ -39,7 +39,7 @@ fn parse_args() -> Result<AppArgs, pico_args::Error> {
             .unwrap_or(PathBuf::from("out.app")),
         interpreter,
         // Parses a required free-standing/positional argument.
-        input: pargs.free_from_str()?,
+        input: pargs.opt_free_from_str()?.unwrap_or("".into()),
     };
 
     // It's up to the caller what to do with the remaining arguments.
