@@ -16,7 +16,7 @@ OPTIONS:
 
 #[derive(Debug)]
 pub struct AppArgs {
-    pub input: PathBuf,
+    pub input: Option<PathBuf>,
     pub interpreter: bool,
     pub output: PathBuf,
 }
@@ -38,8 +38,8 @@ fn parse_args() -> Result<AppArgs, pico_args::Error> {
             .opt_value_from_os_str("--output", parse_path)?
             .unwrap_or(PathBuf::from("out.app")),
         interpreter,
-        // Parses a required free-standing/positional argument.
-        input: pargs.opt_free_from_str()?.unwrap_or("".into()),
+        // Parses free-standing/positional argument.
+        input: pargs.opt_free_from_str()?,
     };
 
     // It's up to the caller what to do with the remaining arguments.

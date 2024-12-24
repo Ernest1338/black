@@ -32,7 +32,7 @@ fn print_and_flush(m: &str) {
 fn main() {
     let args = get_args();
 
-    if args.input.to_str().unwrap().is_empty() {
+    if args.input.is_none() {
         // Interactive mode
         print_and_flush(INTERACTIVE_BANNER);
         let mut interpreter = Interpreter::default();
@@ -66,7 +66,10 @@ fn main() {
     }
 
     // Reading source code
-    let source_code = read_to_string(args.input).expect("Error: can not read source code file");
+    let source_code = match args.input {
+        Some(input) => read_to_string(input).expect("Error: can not read source code file"),
+        None => panic!("Input argument unexpectedly None. This is a bug."),
+    };
 
     // Preprocessing
     let source_code = preprocess(&source_code);
