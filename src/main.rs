@@ -37,7 +37,7 @@ fn main() {
         print_and_flush(INTERACTIVE_BANNER);
         let mut interpreter = Interpreter::default();
         loop {
-            print_and_flush("──→ ");
+            print_and_flush(">>> ");
             let mut input = String::new();
             loop {
                 let mut tmp = String::new();
@@ -48,7 +48,7 @@ fn main() {
                 if input.ends_with("\n\n") {
                     break;
                 }
-                print_and_flush("  → ");
+                print_and_flush("  … ");
             }
             input = input.trim().to_string();
 
