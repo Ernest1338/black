@@ -1,6 +1,9 @@
 use crate::{compiler::Compiler, interpreter::Interpreter};
-use std::fs::read_to_string;
-use std::io::{stdin, stdout, Write};
+use std::{
+    fs::read_to_string,
+    io::{stdin, stdout, Write},
+    process::exit,
+};
 
 // TODO:
 // - good compiler errors with line numbers
@@ -44,10 +47,17 @@ fn main() {
                 stdin()
                     .read_line(&mut tmp)
                     .expect("Error: reading user input");
+
+                // Short circuit exit on "exit" or "quit"
+                if ["exit", "quit"].contains(&tmp.trim()) {
+                    exit(0);
+                }
+
                 input.push_str(&tmp);
                 if input.ends_with("\n\n") {
                     break;
                 }
+
                 print_and_flush("  … ");
             }
             input = input.trim().to_string();

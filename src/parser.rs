@@ -1,5 +1,4 @@
-use std::iter::Peekable;
-use std::str::FromStr;
+use std::{iter::Peekable, str::FromStr};
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Token {
