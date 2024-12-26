@@ -1,14 +1,8 @@
 use crate::{
-    parser::{Ast, BinExpr, BinOpKind, FuncCall},
+    parser::{Ast, BinExpr, BinOpKind, FuncCall, Variable, VariableDeclaration},
     Expr,
 };
 use std::{collections::HashMap, fmt, process::exit};
-
-#[derive(Debug, Clone)]
-pub enum Variable {
-    Number(i64),
-    StringLiteral(String),
-}
 
 impl fmt::Display for Variable {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -40,26 +34,13 @@ impl Interpreter {
     }
 
     pub fn run(&mut self) {
-        for node in &self.ast {
+        let ast = self.ast.clone();
+
+        for node in &ast {
             match node {
-                Expr::FuncCall(func_call) => {
-                    self.handle_func_call(func_call);
-                }
+                Expr::FuncCall(func_call) => self.handle_func_call(func_call),
                 Expr::VariableDeclaration(variable_declaration) => {
-                    self.variables.insert(
-                        variable_declaration.identifier.clone(),
-                        match &variable_declaration.value {
-                            Expr::Number(n) => Variable::Number(*n),
-                            Expr::StringLiteral(s) => Variable::StringLiteral(s.to_owned()),
-                            Expr::BinExpr(bin_expr) => {
-                                Variable::Number(self.handle_bin_expr(bin_expr))
-                            }
-                            _ => {
-                                eprintln!("Error: Can only store strings and numbers in variables");
-                                exit(1);
-                            }
-                        },
-                    );
+                    self.handle_var_decl(variable_declaration)
                 }
                 _ => todo!(),
             }
@@ -73,7 +54,7 @@ impl Interpreter {
             }
         }
         eprintln!("Error: variable doesn't exist: {ident}");
-        exit(1);
+        exit(1); // FIXME
     }
 
     fn eval_operand(&self, operand: &Expr) -> i64 {
@@ -84,7 +65,7 @@ impl Interpreter {
                 Variable::Number(n) => n,
                 _ => {
                     eprintln!("Error: cannot add variable which is not a number");
-                    exit(1);
+                    exit(1); // FIXME
                 }
             },
             _ => todo!(),
@@ -123,8 +104,23 @@ impl Interpreter {
             _ => {
                 // TODO: handle user defined functions
                 eprintln!("Error: unknown function: {}", &func_call.name);
-                exit(1);
+                exit(1); // FIXME
             }
         }
+    }
+
+    fn handle_var_decl(&mut self, variable_declaration: &VariableDeclaration) {
+        self.variables.insert(
+            variable_declaration.identifier.clone(),
+            match &variable_declaration.value {
+                Expr::Number(n) => Variable::Number(*n),
+                Expr::StringLiteral(s) => Variable::StringLiteral(s.to_owned()),
+                Expr::BinExpr(bin_expr) => Variable::Number(self.handle_bin_expr(bin_expr)),
+                _ => {
+                    eprintln!("Error: Can only store strings and numbers in variables");
+                    exit(1); // FIXME
+                }
+            },
+        );
     }
 }

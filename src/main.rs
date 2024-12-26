@@ -99,7 +99,7 @@ fn main() {
         interpreter.run();
     } else {
         // Compiler
-        let compiler = Compiler::from_ast(ast);
+        let mut compiler = Compiler::from_ast(ast);
         compiler.compile(args.output);
     }
 }

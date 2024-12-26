@@ -1,29 +1,44 @@
 use crate::{
-    parser::{Ast, FuncCall},
+    parser::{Ast, FuncCall, Variable, VariableDeclaration},
     Expr,
 };
 use std::{
+    collections::HashMap,
     io::{Read, Write},
     path::PathBuf,
-    process::{Command, Stdio},
+    process::{exit, Command, Stdio},
 };
 
 pub struct Compiler {
     pub ast: Ast,
+    pub ir: String,
+    pub data_sections: String,
+    pub primary_key: usize,
+    pub variables: HashMap<String, Variable>,
 }
 
 impl Compiler {
     pub fn from_ast(ast: Ast) -> Self {
-        Self { ast }
+        Self {
+            ast,
+            ir: String::new(),
+            data_sections: String::new(),
+            primary_key: 0,
+            variables: HashMap::new(),
+        }
     }
 
-    fn handle_func_call(
-        &self,
-        func_call: &FuncCall,
-        ir: &mut String,
-        data_sections: &mut String,
-        index: usize,
-    ) {
+    fn get_var(&self, ident: &str) -> Variable {
+        if self.variables.contains_key(ident) {
+            if let Some(s) = self.variables.get(ident) {
+                return s.clone();
+            }
+        }
+        eprintln!("Error: variable doesn't exist: {ident}");
+        exit(1); // FIXME
+    }
+
+    fn handle_func_call(&mut self, func_call: &FuncCall) {
         match func_call.name.as_ref() {
             "print" => {
                 let mut concat_msg = String::new();
@@ -41,44 +56,83 @@ impl Compiler {
                 }
                 concat_msg = concat_msg.trim().to_string();
 
-                let data_label = format!("$str{}", index);
-                data_sections.push_str(&format!(
-                    "data {} = {{ b \"{}\", b 0 }}\n",
-                    data_label,
-                    concat_msg
-                        .replace("\\", "\\\\")
-                        .replace("\"", "\\\"")
+                let data_label = format!("$str{}", self.primary_key);
+                self.data_sections.push_str(&format!(
+                    "data {data_label} = {{ b \"{}\", b 0 }}\n",
+                    concat_msg.replace("\\", "\\\\").replace("\"", "\\\"")
                 ));
 
-                ir.push_str(&format!("  %r{} =w call $puts(l {})\n", index, data_label));
+                self.ir.push_str(&format!(
+                    "  %r{} =w call $puts(l {})\n",
+                    self.primary_key, data_label
+                ));
             }
             _ => unimplemented!("Function '{}' is not implemented", func_call.name),
         }
     }
 
-    pub fn generate_ir(&self) -> String {
-        let mut ir = String::new();
-        let mut data_sections = String::new();
+    fn handle_var_decl(&mut self, variable_declaration: &VariableDeclaration) {
+        self.variables.insert(
+            variable_declaration.identifier.clone(),
+            match &variable_declaration.value {
+                Expr::Number(n) => Variable::Number(*n),
+                Expr::StringLiteral(s) => Variable::StringLiteral(s.to_owned()),
+                // TODO
+                // Expr::BinExpr(bin_expr) => Variable::Number(self.handle_bin_expr(bin_expr)),
+                _ => {
+                    eprintln!("Error: Can only store strings and numbers in variables");
+                    exit(1); // FIXME
+                }
+            },
+        );
+        let var_label = format!("${}", variable_declaration.identifier);
+        match &variable_declaration.value {
+            Expr::Number(n) => {
+                self.data_sections.push_str(&format!(
+                    "data {var_label} = {{ w {} }}",
+                    Variable::Number(*n)
+                ));
+            }
+            Expr::StringLiteral(s) => {
+                self.data_sections.push_str(&format!(
+                    "data {var_label} = {{ b \"{}\", b 0 }}",
+                    Variable::StringLiteral(s.to_owned())
+                ));
+            }
+            // TODO
+            // Expr::BinExpr(bin_expr) => Variable::Number(self.handle_bin_expr(bin_expr)),
+            _ => {
+                eprintln!("Error: Can only store strings and numbers in variables");
+                exit(1); // FIXME
+            }
+        };
+    }
 
-        ir.push_str("export function w $main() {\n@start\n");
+    pub fn generate_ir(&mut self) -> String {
+        self.ir.push_str("export function w $main() {\n@start\n");
 
-        for (i, node) in self.ast.iter().enumerate() {
+        let ast = self.ast.clone();
+
+        for node in &ast {
             match node {
-                Expr::FuncCall(func_call) => {
-                    self.handle_func_call(func_call, &mut ir, &mut data_sections, i)
+                Expr::FuncCall(func_call) => self.handle_func_call(func_call),
+                Expr::VariableDeclaration(variable_declaration) => {
+                    self.handle_var_decl(variable_declaration)
                 }
                 _ => unimplemented!("This expression type is not yet implemented"),
             }
+            self.primary_key += 1;
         }
 
-        ir.push_str("  ret 0\n}");
+        self.ir.push_str("  ret 0\n}");
 
-        format!("{}\n{}", data_sections, ir)
+        format!("{}\n\n{}", self.ir, self.data_sections)
     }
 
-    pub fn compile(&self, output_file: PathBuf) {
+    pub fn compile(&mut self, output_file: PathBuf) {
         let ir = self.generate_ir();
-        // println!("compiled:\n{}", ir);
+        dbg!(&self.variables);
+        println!("compiled:\n{}", ir);
 
         let out_file_str = output_file.to_str().expect("invalid output file");
 

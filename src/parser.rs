@@ -148,6 +148,12 @@ pub enum BinOpKind {
     Divide,
 }
 
+#[derive(Debug, Clone)]
+pub enum Variable {
+    Number(i64),
+    StringLiteral(String),
+}
+
 pub type Ast = Vec<Expr>;
 
 // Parser struct that wraps the Peekable iterator

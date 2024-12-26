@@ -27,7 +27,7 @@ fn parse_args() -> Result<AppArgs, pico_args::Error> {
     // Help has a higher priority and should be handled separately.
     if pargs.contains(["-h", "--help"]) {
         print!("{}", HELP);
-        std::process::exit(0);
+        exit(0);
     }
 
     let interpreter = pargs.contains(["-i", "--interpreter"]);
