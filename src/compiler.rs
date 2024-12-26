@@ -12,8 +12,9 @@ use std::{
 pub struct Compiler {
     pub ast: Ast,
     pub ir: String,
-    pub data_sections: String,
+    pub data: String,
     pub primary_key: usize,
+    // TODO: Think about: Is this needed in the compiler?
     pub variables: HashMap<String, Variable>,
 }
 
@@ -22,7 +23,7 @@ impl Compiler {
         Self {
             ast,
             ir: String::new(),
-            data_sections: String::new(),
+            data: String::new(),
             primary_key: 0,
             variables: HashMap::new(),
         }
@@ -38,34 +39,39 @@ impl Compiler {
         exit(1); // FIXME
     }
 
+    fn get_pk(&mut self) -> usize {
+        self.primary_key += 1;
+        self.primary_key
+    }
+
     fn handle_func_call(&mut self, func_call: &FuncCall) {
         match func_call.name.as_ref() {
             "print" => {
-                let mut concat_msg = String::new();
                 for arg in func_call.arguments.iter() {
+                    let pk = self.get_pk();
                     match arg {
                         Expr::StringLiteral(message) => {
-                            concat_msg.push_str(message);
+                            let escaped = message.replace("\\", "\\\\").replace("\"", "\\\"");
+                            self.data
+                                .push_str(&format!("data $v{pk} = {{ b \"{escaped}\", b 0 }}\n"));
+                            self.ir
+                                .push_str(&format!("  %r{pk} =w call $puts(l $v{pk})\n",));
                         }
                         Expr::Number(num) => {
-                            concat_msg.push_str(&num.to_string());
+                            let escaped =
+                                num.to_string().replace("\\", "\\\\").replace("\"", "\\\"");
+                            self.data
+                                .push_str(&format!("data $v{pk} = {{ b \"{escaped}\", b 0 }}\n",));
+                            self.ir
+                                .push_str(&format!("  %r{pk} =w call $puts(l $v{pk})\n",));
+                        }
+                        Expr::Identifier(id) => {
+                            self.ir
+                                .push_str(&format!("  %r{pk} =w call $puts(l ${id})\n"));
                         }
                         _ => unimplemented!("Argument type is not supported"),
                     }
-                    concat_msg.push(' ');
                 }
-                concat_msg = concat_msg.trim().to_string();
-
-                let data_label = format!("$str{}", self.primary_key);
-                self.data_sections.push_str(&format!(
-                    "data {data_label} = {{ b \"{}\", b 0 }}\n",
-                    concat_msg.replace("\\", "\\\\").replace("\"", "\\\"")
-                ));
-
-                self.ir.push_str(&format!(
-                    "  %r{} =w call $puts(l {})\n",
-                    self.primary_key, data_label
-                ));
             }
             _ => unimplemented!("Function '{}' is not implemented", func_call.name),
         }
@@ -88,14 +94,14 @@ impl Compiler {
         let var_label = format!("${}", variable_declaration.identifier);
         match &variable_declaration.value {
             Expr::Number(n) => {
-                self.data_sections.push_str(&format!(
-                    "data {var_label} = {{ w {} }}",
+                self.data.push_str(&format!(
+                    "data {var_label} = {{ w {} }}\n",
                     Variable::Number(*n)
                 ));
             }
             Expr::StringLiteral(s) => {
-                self.data_sections.push_str(&format!(
-                    "data {var_label} = {{ b \"{}\", b 0 }}",
+                self.data.push_str(&format!(
+                    "data {var_label} = {{ b \"{}\", b 0 }}\n",
                     Variable::StringLiteral(s.to_owned())
                 ));
             }
@@ -121,12 +127,11 @@ impl Compiler {
                 }
                 _ => unimplemented!("This expression type is not yet implemented"),
             }
-            self.primary_key += 1;
         }
 
         self.ir.push_str("  ret 0\n}");
 
-        format!("{}\n\n{}", self.ir, self.data_sections)
+        format!("{}\n\n{}", self.ir, self.data)
     }
 
     pub fn compile(&mut self, output_file: PathBuf) {

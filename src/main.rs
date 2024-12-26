@@ -8,6 +8,9 @@ use std::{
 // TODO:
 // - good compiler errors with line numbers
 // - handling errors in rust (+ make interpreter not crash on error)
+// - color output, cli
+// - print ints in compiler
+// - debug mode (env var, times of compilation steps and dbg output)
 
 mod args;
 use args::get_args;

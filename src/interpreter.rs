@@ -61,7 +61,7 @@ impl Interpreter {
         match operand {
             Expr::BinExpr(bin_expr) => self.handle_bin_expr(bin_expr),
             Expr::Number(n) => *n,
-            Expr::Identifier(i) => match self.get_var(i) {
+            Expr::Identifier(id) => match self.get_var(id) {
                 Variable::Number(n) => n,
                 _ => {
                     eprintln!("Error: cannot add variable which is not a number");
@@ -92,7 +92,7 @@ impl Interpreter {
                         Expr::FuncCall(func_call) => self.handle_func_call(func_call),
                         Expr::BinExpr(bin_expr) => print!("{}", self.handle_bin_expr(bin_expr)),
                         Expr::Number(n) => print!("{n}"),
-                        Expr::Identifier(i) => print!("{}", self.get_var(i)),
+                        Expr::Identifier(id) => print!("{}", self.get_var(id)),
                         Expr::StringLiteral(s) => print!("{s}"),
                         _ => eprintln!("Invalid argument to print"),
                     }
