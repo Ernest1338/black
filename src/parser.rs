@@ -1,5 +1,6 @@
 use std::{iter::Peekable, str::FromStr};
 
+/// Represents different token types for the lexer
 #[derive(Debug, PartialEq, Clone)]
 pub enum Token {
     Let,
@@ -17,6 +18,7 @@ pub enum Token {
 }
 
 impl Token {
+    /// Returns the length of the token as it appears in the source
     fn len(&self) -> usize {
         match self {
             Token::Let => 3,
@@ -38,6 +40,7 @@ impl Token {
 impl FromStr for Token {
     type Err = ();
 
+    /// Parses a string into a Token, if possible
     fn from_str(s: &str) -> Result<Token, ()> {
         // Token::Number
         if let Some(c) = s.chars().next() {
@@ -84,6 +87,7 @@ impl FromStr for Token {
     }
 }
 
+/// Prepares source code for further processing
 pub fn preprocess(code: &str) -> String {
     // Handle comments
     code.lines()
@@ -92,6 +96,7 @@ pub fn preprocess(code: &str) -> String {
         .join(" ")
 }
 
+/// Converts input text into a vector of tokens
 pub fn lexer(input: &str) -> Result<Vec<Token>, String> {
     let mut tokens = Vec::new();
     for line in input.lines() {
@@ -110,6 +115,7 @@ pub fn lexer(input: &str) -> Result<Vec<Token>, String> {
     Ok(tokens)
 }
 
+/// Represents a parsed expression in the abstract syntax tree (AST)
 #[derive(Debug, Clone)]
 #[allow(clippy::enum_variant_names)]
 pub enum Expr {
@@ -121,18 +127,21 @@ pub enum Expr {
     StringLiteral(String),
 }
 
+/// Represents a variable declaration in the AST
 #[derive(Debug, Clone)]
 pub struct VariableDeclaration {
     pub identifier: String,
     pub value: Expr,
 }
 
+/// Represents a function call in the AST
 #[derive(Debug, Clone)]
 pub struct FuncCall {
     pub name: String,
     pub arguments: Vec<Expr>,
 }
 
+/// Represents a binary expression in the AST
 #[derive(Debug, Clone)]
 pub struct BinExpr {
     pub lhs: Expr,
@@ -140,6 +149,7 @@ pub struct BinExpr {
     pub rhs: Expr,
 }
 
+/// Represents kinds of binary operators
 #[derive(Debug, Clone)]
 pub enum BinOpKind {
     Plus,
@@ -148,27 +158,30 @@ pub enum BinOpKind {
     Divide,
 }
 
+/// Represents variables in the AST
 #[derive(Debug, Clone)]
 pub enum Variable {
     Number(i64),
     StringLiteral(String),
 }
 
+/// Type alias for the AST, a list of expressions
 pub type Ast = Vec<Expr>;
 
-// Parser struct that wraps the Peekable iterator
+/// Parses tokens into expressions and builds an AST
 pub struct Parser<'a> {
     iter: Peekable<std::slice::Iter<'a, Token>>,
 }
 
 impl<'a> Parser<'a> {
+    /// Creates a new parser instance from a list of tokens
     pub fn new(tokens: &'a [Token]) -> Self {
         Parser {
             iter: tokens.iter().peekable(),
         }
     }
 
-    // Parse primary expressions (number, identifier, etc.)
+    /// Parses primary expressions (numbers, identifiers, etc.)
     pub fn parse_primary(&mut self) -> Result<Expr, String> {
         match self.iter.next() {
             Some(Token::Number(n)) => Ok(Expr::Number(*n)),
@@ -192,7 +205,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    // Parse function calls
+    /// Parses function calls
     fn parse_func_call(&mut self, name: &str) -> Result<Expr, String> {
         let mut args = Vec::new();
 
@@ -228,7 +241,7 @@ impl<'a> Parser<'a> {
         }))
     }
 
-    // Parse binary expressions (e.g., addition, multiplication)
+    /// Parses binary expressions (e.g., addition, multiplication)
     pub fn parse_binary(
         &mut self,
         parse_operand: fn(&mut Self) -> Result<Expr, String>,
@@ -255,7 +268,7 @@ impl<'a> Parser<'a> {
         Ok(left)
     }
 
-    // Parse variable declarationds
+    /// Parses variable declarations
     pub fn parse_variable_declaration(&mut self) -> Result<Expr, String> {
         self.iter.next(); // Consume `Token::Let`
         if let Some(Token::Identifier(name)) = self.iter.next() {
@@ -273,7 +286,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    // Parse expressions
+    /// Parses general expressions
     pub fn parse_expr(&mut self) -> Result<Expr, String> {
         match self.iter.peek() {
             Some(Token::Let) => self.parse_variable_declaration(),
@@ -291,7 +304,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    // Parse the full program (top-level)
+    /// Parses a complete program into an AST
     pub fn parse(&mut self) -> Result<Ast, String> {
         let mut ast = Vec::new();
         while let Some(_token) = self.iter.peek() {

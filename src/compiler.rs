@@ -1,5 +1,6 @@
 use crate::{
     parser::{Ast, FuncCall, Variable, VariableDeclaration},
+    utils::{dbg, dbg_pretty},
     Expr,
 };
 use std::{
@@ -9,6 +10,8 @@ use std::{
     process::{exit, Command, Stdio},
 };
 
+/// Represents a compiler that processes an abstract syntax tree (AST) and generates intermediate
+/// representation (IR), as well as handles variable management and function calls
 pub struct Compiler {
     pub ast: Ast,
     pub ir: String,
@@ -19,6 +22,7 @@ pub struct Compiler {
 }
 
 impl Compiler {
+    /// Creates a new `Compiler` instance from the given AST, initializing necessary fields
     pub fn from_ast(ast: Ast) -> Self {
         Self {
             ast,
@@ -29,6 +33,7 @@ impl Compiler {
         }
     }
 
+    /// Retrieves a variable by its identifier, returning it or exiting with an error if not found
     fn get_var(&self, ident: &str) -> Variable {
         if self.variables.contains_key(ident) {
             if let Some(s) = self.variables.get(ident) {
@@ -39,11 +44,13 @@ impl Compiler {
         exit(1); // FIXME
     }
 
+    /// Increments and returns the primary key, used for generating unique variable labels
     fn get_pk(&mut self) -> usize {
         self.primary_key += 1;
         self.primary_key
     }
 
+    /// Handles a function call
     fn handle_func_call(&mut self, func_call: &FuncCall) {
         match func_call.name.as_ref() {
             "print" => {
@@ -77,6 +84,8 @@ impl Compiler {
         }
     }
 
+    /// Handles a variable declaration, storing the variable in the `variables` map and generating
+    /// corresponding data and IR
     fn handle_var_decl(&mut self, variable_declaration: &VariableDeclaration) {
         self.variables.insert(
             variable_declaration.identifier.clone(),
@@ -114,6 +123,7 @@ impl Compiler {
         };
     }
 
+    /// Generates the intermediate representation (IR) for the AST and returns it as a string
     pub fn generate_ir(&mut self) -> String {
         self.ir.push_str("export function w $main() {\n@start\n");
 
@@ -134,10 +144,12 @@ impl Compiler {
         format!("{}\n\n{}", self.ir, self.data)
     }
 
+    /// Compiles the AST by generating IR, running it through the `qbe` compiler, and then
+    /// assembling and linking the output with `cc` to produce the final executable
     pub fn compile(&mut self, output_file: PathBuf) {
         let ir = self.generate_ir();
-        dbg!(&self.variables);
-        println!("compiled:\n{}", ir);
+        dbg("Variables", &self.variables);
+        dbg("Compiled IR", &ir);
 
         let out_file_str = output_file.to_str().expect("invalid output file");
 
@@ -165,7 +177,7 @@ impl Compiler {
 
         qbe.wait().expect("Failed to wait for qbe process");
 
-        // println!("QBE output: {qbe_output}");
+        dbg("QBE output", &qbe_output);
 
         let mut cc = Command::new("cc")
             .args(["-x", "assembler", "-o", out_file_str, "-"])
@@ -190,6 +202,6 @@ impl Compiler {
 
         cc.wait().expect("Failed to wait for cc process");
 
-        // println!("CC output: {cc_output}");
+        dbg("CC output", &cc_output);
     }
 }

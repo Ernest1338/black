@@ -1,5 +1,6 @@
 use std::{path::PathBuf, process::exit};
 
+/// Help message displayed when the user requests help
 const HELP: &str = "\
 Black Lang
 
@@ -14,6 +15,7 @@ OPTIONS:
   -i, --interpreter     Use interpreter instead of compiling to a binary
 ";
 
+/// Represents the parsed application arguments
 #[derive(Debug)]
 pub struct AppArgs {
     pub input: Option<PathBuf>,
@@ -21,6 +23,7 @@ pub struct AppArgs {
     pub output: PathBuf,
 }
 
+/// Parses command-line arguments and returns an `AppArgs` struct with the parsed values
 fn parse_args() -> Result<AppArgs, pico_args::Error> {
     let mut pargs = pico_args::Arguments::from_env();
 
@@ -51,6 +54,7 @@ fn parse_args() -> Result<AppArgs, pico_args::Error> {
     Ok(args)
 }
 
+/// Retrieves the application arguments, parsing and handling any errors
 pub fn get_args() -> AppArgs {
     match parse_args() {
         Ok(v) => v,
@@ -64,6 +68,7 @@ pub fn get_args() -> AppArgs {
     }
 }
 
+/// Converts a given `OsStr` to a `PathBuf`
 fn parse_path(s: &std::ffi::OsStr) -> Result<std::path::PathBuf, &'static str> {
     Ok(s.into())
 }

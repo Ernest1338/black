@@ -1,16 +1,11 @@
 use crate::{compiler::Compiler, interpreter::Interpreter};
-use std::{
-    fs::read_to_string,
-    io::{stdin, stdout, Write},
-    process::exit,
-};
+use std::{fs::read_to_string, io::stdin, process::exit};
 
 // TODO:
 // - good compiler errors with line numbers
 // - handling errors in rust (+ make interpreter not crash on error)
 // - color output, cli
 // - print ints in compiler
-// - debug mode (env var, times of compilation steps and dbg output)
 
 mod args;
 use args::get_args;
@@ -22,6 +17,10 @@ mod interpreter;
 mod parser;
 use parser::{lexer, preprocess, Expr, Parser};
 
+mod utils;
+use utils::{measure_time, print_and_flush, dbg, dbg_pretty};
+
+/// Interactive mode banner
 const INTERACTIVE_BANNER: &str = "\
 ╭──────────────────────╮
 │   ☠︎︎  Black Lang  ☠︎︎   │
@@ -30,11 +29,7 @@ const INTERACTIVE_BANNER: &str = "\
 ╰──────────────────────╯
 ";
 
-fn print_and_flush(m: &str) {
-    print!("{m}");
-    stdout().flush().unwrap();
-}
-
+/// Entry point of the language CLI
 fn main() {
     let args = get_args();
 
@@ -85,24 +80,26 @@ fn main() {
     };
 
     // Preprocessing
-    let source_code = preprocess(&source_code);
+    let source_code = measure_time("Preprocessing", || preprocess(&source_code));
 
     // Lexical Analysis
-    let tokens = lexer(&source_code).expect("Lexer failed");
-    // println!("Tokens: {:?}", tokens);
+    let tokens = measure_time("Lexical Analysis", || {
+        lexer(&source_code).expect("Lexer failed")
+    });
+    dbg("Tokens", &tokens);
 
     // Parsing
     let mut parser = Parser::new(&tokens);
-    let ast = parser.parse().expect("Parser failed");
-    // println!("AST: {:#?}", &ast);
+    let ast = measure_time("Parsing", || parser.parse().expect("Parser failed"));
+    dbg_pretty("AST", &ast);
 
     if args.interpreter {
         // Interpreter
         let mut interpreter = Interpreter::from_ast(ast);
-        interpreter.run();
+        measure_time("Interpreter Execution", || interpreter.run());
     } else {
         // Compiler
         let mut compiler = Compiler::from_ast(ast);
-        compiler.compile(args.output);
+        measure_time("Compiler Execution", || compiler.compile(args.output));
     }
 }

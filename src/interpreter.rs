@@ -4,6 +4,8 @@ use crate::{
 };
 use std::{collections::HashMap, fmt, process::exit};
 
+/// Implements the `Display` trait for the `Variable` enum, allowing formatted output for eg.
+/// numbers and string literals
 impl fmt::Display for Variable {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -13,12 +15,14 @@ impl fmt::Display for Variable {
     }
 }
 
+/// Represents an interpreter that processes an abstract syntax tree (AST) and evaluates expressions
 pub struct Interpreter {
     pub ast: Ast,
     pub variables: HashMap<String, Variable>,
 }
 
 impl Interpreter {
+    /// Creates a new `Interpreter` instance from the provided AST
     pub fn from_ast(ast: Ast) -> Self {
         Self {
             ast,
@@ -26,6 +30,7 @@ impl Interpreter {
         }
     }
 
+    /// Creates a default `Interpreter` instance with an empty AST and no variables
     pub fn default() -> Self {
         Self {
             ast: Ast::default(),
@@ -33,6 +38,7 @@ impl Interpreter {
         }
     }
 
+    /// Runs the interpreter, processing each expression in the AST
     pub fn run(&mut self) {
         let ast = self.ast.clone();
 
@@ -47,6 +53,7 @@ impl Interpreter {
         }
     }
 
+    /// Retrieves the value of a variable, or exits with an error if it doesn't exist
     fn get_var(&self, ident: &str) -> Variable {
         if self.variables.contains_key(ident) {
             if let Some(s) = self.variables.get(ident) {
@@ -57,6 +64,7 @@ impl Interpreter {
         exit(1); // FIXME
     }
 
+    /// Evaluates an operand
     fn eval_operand(&self, operand: &Expr) -> i64 {
         match operand {
             Expr::BinExpr(bin_expr) => self.handle_bin_expr(bin_expr),
@@ -72,6 +80,7 @@ impl Interpreter {
         }
     }
 
+    /// Handles the evaluation of a binary expression, returning the result of the operation
     fn handle_bin_expr(&self, bin_expr: &BinExpr) -> i64 {
         let lhs = self.eval_operand(&bin_expr.lhs);
         let rhs = self.eval_operand(&bin_expr.rhs);
@@ -84,6 +93,7 @@ impl Interpreter {
         }
     }
 
+    /// Handles function calls
     fn handle_func_call(&self, func_call: &FuncCall) {
         match func_call.name.as_ref() {
             "print" => {
@@ -109,6 +119,8 @@ impl Interpreter {
         }
     }
 
+    /// Handles variable declarations by storing the variable in the `variables` map and
+    /// evaluating its value
     fn handle_var_decl(&mut self, variable_declaration: &VariableDeclaration) {
         self.variables.insert(
             variable_declaration.identifier.clone(),
