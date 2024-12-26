@@ -34,6 +34,7 @@ impl Compiler {
     }
 
     /// Retrieves a variable by its identifier, returning it or exiting with an error if not found
+    #[allow(dead_code)]
     fn get_var(&self, ident: &str) -> Variable {
         if self.variables.contains_key(ident) {
             if let Some(s) = self.variables.get(ident) {

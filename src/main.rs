@@ -18,14 +18,14 @@ mod parser;
 use parser::{lexer, preprocess, Expr, Parser};
 
 mod utils;
-use utils::{measure_time, print_and_flush, dbg, dbg_pretty};
+use utils::{dbg, dbg_pretty, measure_time, print_and_flush};
 
 /// Interactive mode banner
 const INTERACTIVE_BANNER: &str = "\
 ╭──────────────────────╮
-│   ☠︎︎  Black Lang  ☠︎︎   │
+│   ☠︎︎  \x1b[1mBlack Lang\x1b[00m  ☠︎︎   │
 │                      │
-│ ⚓Interactive mode   │
+│ ⚓\x1b[4mInteractive mode\x1b[00m   │
 ╰──────────────────────╯
 ";
 
