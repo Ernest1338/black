@@ -4,15 +4,15 @@ use std::{path::PathBuf, process::exit};
 const HELP: &str = "\
 Black Lang
 
-USAGE:
-  black [OPTIONS] <FILE(s)>
+\x1b[92mUSAGE\x1b[00m:
+  \x1b[33mblack [OPTIONS] <FILE(s)>\x1b[00m
 
-FLAGS:
-  -h, --help            Prints help information
+\x1b[92mFLAGS\x1b[00m:
+  -h, --help            \x1b[90mPrints help information\x1b[00m
 
-OPTIONS:
-  --output PATH         Sets an output path (default: out.app)
-  -i, --interpreter     Use interpreter instead of compiling to a binary
+\x1b[92mOPTIONS\x1b[00m:
+  --output PATH         \x1b[90mSets an output path (default: out.app)\x1b[00m
+  -i, --interpreter     \x1b[90mUse interpreter instead of compiling to a binary\x1b[00m
 ";
 
 /// Represents the parsed application arguments

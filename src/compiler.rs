@@ -1,6 +1,6 @@
 use crate::{
     parser::{Ast, FuncCall, Variable, VariableDeclaration},
-    utils::{dbg, dbg_pretty},
+    utils::dbg,
     Expr,
 };
 use std::{

@@ -6,8 +6,30 @@ use std::{
 };
 
 /// ANSI color codes for CLI output
+#[allow(dead_code)]
 pub enum Color {
     Gray,
+    Black,
+    Red,
+    Green,
+    Gold,
+    Blue,
+    Pink,
+    Cyan,
+    LightRed,
+    LightGreen,
+    Yellow,
+    Purple,
+    LightPink,
+    LightBlue,
+    White,
+    Bold,
+    Faint,
+    Italic,
+    Underline,
+    Blink,
+    Invert,
+    Strike,
     Reset,
 }
 
@@ -16,6 +38,27 @@ impl Color {
     fn str(&self) -> &str {
         match self {
             Color::Gray => "\x1b[90m",
+            Color::Black => "\x1b[30m",
+            Color::Red => "\x1b[31m",
+            Color::Green => "\x1b[32m",
+            Color::Gold => "\x1b[33m",
+            Color::Blue => "\x1b[34m",
+            Color::Pink => "\x1b[35m",
+            Color::Cyan => "\x1b[36m",
+            Color::LightRed => "\x1b[91m",
+            Color::LightGreen => "\x1b[92m",
+            Color::Yellow => "\x1b[93m",
+            Color::Purple => "\x1b[94m",
+            Color::LightPink => "\x1b[95m",
+            Color::LightBlue => "\x1b[96m",
+            Color::White => "\x1b[97m",
+            Color::Bold => "\x1b[1m",
+            Color::Faint => "\x1b[2m",
+            Color::Italic => "\x1b[3m",
+            Color::Underline => "\x1b[4m",
+            Color::Blink => "\x1b[5m",
+            Color::Invert => "\x1b[7m",
+            Color::Strike => "\x1b[9m",
             Color::Reset => "\x1b[00m",
         }
     }

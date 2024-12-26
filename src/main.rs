@@ -4,7 +4,7 @@ use std::{fs::read_to_string, io::stdin, process::exit};
 // TODO:
 // - good compiler errors with line numbers
 // - handling errors in rust (+ make interpreter not crash on error)
-// - color output, cli
+// - color error messages, general cli output
 // - print ints in compiler
 
 mod args;
