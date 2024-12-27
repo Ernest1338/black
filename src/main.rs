@@ -100,6 +100,6 @@ fn main() {
     } else {
         // Compiler
         let mut compiler = Compiler::from_ast(ast);
-        measure_time("Compiler Execution", || compiler.compile(args.output));
+        measure_time("Full Compiler Execution", || compiler.compile(args.output));
     }
 }

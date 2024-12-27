@@ -1,6 +1,6 @@
 use crate::{
     parser::{Ast, FuncCall, Variable, VariableDeclaration},
-    utils::dbg,
+    utils::{dbg, measure_time},
     Expr,
 };
 use std::{
@@ -154,54 +154,60 @@ impl Compiler {
 
         let out_file_str = output_file.to_str().expect("invalid output file");
 
-        let mut qbe = Command::new("qbe")
-            .arg("-")
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .spawn()
-            .expect("Failed to start qbe");
-
-        // Write ir to the qbe process stdin
-        if let Some(mut stdin) = qbe.stdin.take() {
-            stdin
-                .write_all(ir.as_bytes())
-                .expect("Failed to write to qbe stdin");
-        }
-
-        // Get the qbe output assembly
         let mut qbe_output = String::new();
-        if let Some(mut stdout) = qbe.stdout.take() {
-            stdout
-                .read_to_string(&mut qbe_output)
-                .expect("Failed to read qbe stdout");
-        }
 
-        qbe.wait().expect("Failed to wait for qbe process");
+        measure_time("QBE execution", || {
+            let mut qbe = Command::new("qbe")
+                .arg("-")
+                .stdin(Stdio::piped())
+                .stdout(Stdio::piped())
+                .spawn()
+                .expect("Failed to start qbe");
+
+            // Write ir to the qbe process stdin
+            if let Some(mut stdin) = qbe.stdin.take() {
+                stdin
+                    .write_all(ir.as_bytes())
+                    .expect("Failed to write to qbe stdin");
+            }
+
+            // Get the qbe output assembly
+            if let Some(mut stdout) = qbe.stdout.take() {
+                stdout
+                    .read_to_string(&mut qbe_output)
+                    .expect("Failed to read qbe stdout");
+            }
+
+            qbe.wait().expect("Failed to wait for qbe process");
+        });
 
         dbg("QBE output", &qbe_output);
 
-        let mut cc = Command::new("cc")
-            .args(["-x", "assembler", "-o", out_file_str, "-"])
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .spawn()
-            .expect("Failed to start cc");
-
-        // Write assembly from qbe to stdin of cc compiler
-        if let Some(mut stdin) = cc.stdin.take() {
-            stdin
-                .write_all(qbe_output.as_bytes())
-                .expect("Failed to write to qbe stdin");
-        }
-
         let mut cc_output = String::new();
-        if let Some(mut stdout) = cc.stdout.take() {
-            stdout
-                .read_to_string(&mut cc_output)
-                .expect("Failed to read cc stdout");
-        }
 
-        cc.wait().expect("Failed to wait for cc process");
+        measure_time("CC execution", || {
+            let mut cc = Command::new("cc")
+                .args(["-x", "assembler", "-o", out_file_str, "-"])
+                .stdin(Stdio::piped())
+                .stdout(Stdio::piped())
+                .spawn()
+                .expect("Failed to start cc");
+
+            // Write assembly from qbe to stdin of cc compiler
+            if let Some(mut stdin) = cc.stdin.take() {
+                stdin
+                    .write_all(qbe_output.as_bytes())
+                    .expect("Failed to write to qbe stdin");
+            }
+
+            if let Some(mut stdout) = cc.stdout.take() {
+                stdout
+                    .read_to_string(&mut cc_output)
+                    .expect("Failed to read cc stdout");
+            }
+
+            cc.wait().expect("Failed to wait for cc process");
+        });
 
         dbg("CC output", &cc_output);
     }

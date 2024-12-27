@@ -84,7 +84,7 @@ pub fn dbg<T: Debug>(label: &str, value: &T) {
     // and usage in both `dbg` and `dbg_pretty`
     // NOTE: maybe a debug printer object?
     if env::var("DEBUG").is_ok() {
-        println!("{} {label}: {value:?}", color("[DEBUG]", Color::Gray));
+        println!("{} {}: {value:?}", color("[DEBUG]", Color::Gray), color(&label, Color::LightPink));
     }
 }
 
@@ -100,8 +100,13 @@ pub fn measure_time<T, F: FnOnce() -> T>(label: &str, f: F) -> T {
     if env::var("DEBUG").is_ok() {
         let start = Instant::now();
         let result = f();
-        let duration = start.elapsed();
-        dbg(&format!("⏱  {label} took"), &duration);
+        let duration = format!("{:?}", start.elapsed());
+        println!(
+            "{} {}  {label} took: {}",
+            color("[DEBUG]", Color::Gray),
+            color("⏱", Color::Gold),
+            color(&duration, Color::LightGreen)
+        );
         result
     } else {
         f()
