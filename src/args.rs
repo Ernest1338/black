@@ -37,6 +37,7 @@ fn parse_args() -> Result<AppArgs, pico_args::Error> {
 
     let args = AppArgs {
         // Parses an optional value from `&OsStr` using a specified function.
+        // FIXME: -o should also work
         output: pargs
             .opt_value_from_os_str("--output", parse_path)?
             .unwrap_or(PathBuf::from("out.app")),

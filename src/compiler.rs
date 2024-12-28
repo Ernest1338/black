@@ -57,6 +57,7 @@ impl Compiler {
             "print" => {
                 for arg in func_call.arguments.iter() {
                     let pk = self.get_pk();
+
                     match arg {
                         Expr::StringLiteral(message) => {
                             let escaped = message.replace("\\", "\\\\").replace("\"", "\\\"");

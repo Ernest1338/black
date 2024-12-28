@@ -5,6 +5,7 @@ use std::{fs::read_to_string, io::stdin, process::exit};
 // - good compiler errors with line numbers
 // - handling errors in rust (+ make interpreter not crash on error)
 // - color error messages, general cli output
+// - more test cases
 
 mod args;
 use args::get_args;
@@ -18,6 +19,8 @@ use parser::{lexer, preprocess, Expr, Parser};
 
 mod utils;
 use utils::{dbg, dbg_pretty, measure_time, print_and_flush};
+
+mod tests;
 
 /// Interactive mode banner
 const INTERACTIVE_BANNER: &str = "\
