@@ -11,7 +11,7 @@ Black Lang
   -h, --help            \x1b[90mPrints help information\x1b[00m
 
 \x1b[92mOPTIONS\x1b[00m:
-  --output PATH         \x1b[90mSets an output path (default: out.app)\x1b[00m
+  -o, --output PATH     \x1b[90mSets an output path (default: out.app)\x1b[00m
   -i, --interpreter     \x1b[90mUse interpreter instead of compiling to a binary\x1b[00m
 ";
 
@@ -37,9 +37,8 @@ fn parse_args() -> Result<AppArgs, pico_args::Error> {
 
     let args = AppArgs {
         // Parses an optional value from `&OsStr` using a specified function.
-        // FIXME: -o should also work
         output: pargs
-            .opt_value_from_os_str("--output", parse_path)?
+            .opt_value_from_os_str(["-o", "--output"], parse_path)?
             .unwrap_or(PathBuf::from("out.app")),
         interpreter,
         // Parses free-standing/positional argument.
