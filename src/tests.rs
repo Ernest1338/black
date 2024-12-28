@@ -101,11 +101,49 @@ print(a)
     assert!(compile(code) == expected);
 }
 
-// #[test]
-// fn print_multiple_args() {
-//     let code = r#"print("hello", 1)"#;
-//     let expected = "hello 1";
-//     assert!(interpret(code) == expected);
-//     // FIXME
-//     assert!(compile(code) == expected);
-// }
+#[test]
+fn print_multiple_args() {
+    let code = r#"print("hello", 1)"#;
+    let expected = "hello 1";
+    assert!(interpret(code) == expected);
+    // FIXME
+    // assert!(compile(code) == expected);
+}
+
+#[test]
+fn print_add() {
+    let code = r#"
+print(1+1)
+"#;
+    let expected = "2";
+    assert!(interpret(code) == expected);
+    // FIXME
+    // assert!(compile(code) == expected);
+}
+
+#[test]
+fn print_add_vars() {
+    let code = r#"
+let a = 1
+let b = 1
+print(a+b)
+"#;
+    let expected = "2";
+    assert!(interpret(code) == expected);
+    // FIXME
+    // assert!(compile(code) == expected);
+}
+
+#[test]
+fn adding_vars() {
+    let code = r#"
+let a = 1
+let b = 1
+let c = a + b
+print(c, a + b)
+"#;
+    let expected = "2 2";
+    assert!(interpret(code) == expected);
+    // FIXME
+    // assert!(compile(code) == expected);
+}
