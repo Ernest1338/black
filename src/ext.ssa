@@ -1,0 +1,8 @@
+data $int_fmt = { b "%i\n", b 0 }
+
+export function $print_int(w %a0) {
+@start
+    call $printf(l $int_fmt, w %a0)
+    ret
+}
+

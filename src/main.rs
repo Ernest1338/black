@@ -5,7 +5,6 @@ use std::{fs::read_to_string, io::stdin, process::exit};
 // - good compiler errors with line numbers
 // - handling errors in rust (+ make interpreter not crash on error)
 // - color error messages, general cli output
-// - print ints in compiler
 
 mod args;
 use args::get_args;

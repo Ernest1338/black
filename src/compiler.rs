@@ -1,6 +1,6 @@
 use crate::{
     parser::{Ast, FuncCall, Variable, VariableDeclaration},
-    utils::{dbg, measure_time},
+    utils::{dbg, dbg_plain, measure_time},
     Expr,
 };
 use std::{
@@ -62,20 +62,28 @@ impl Compiler {
                             let escaped = message.replace("\\", "\\\\").replace("\"", "\\\"");
                             self.data
                                 .push_str(&format!("data $v{pk} = {{ b \"{escaped}\", b 0 }}\n"));
-                            self.ir
-                                .push_str(&format!("  %r{pk} =w call $puts(l $v{pk})\n",));
+                            self.ir.push_str(&format!("  call $puts(l $v{pk})\n",));
                         }
                         Expr::Number(num) => {
                             let escaped =
                                 num.to_string().replace("\\", "\\\\").replace("\"", "\\\"");
                             self.data
                                 .push_str(&format!("data $v{pk} = {{ b \"{escaped}\", b 0 }}\n",));
-                            self.ir
-                                .push_str(&format!("  %r{pk} =w call $puts(l $v{pk})\n",));
+                            self.ir.push_str(&format!("  call $puts(l $v{pk})\n",));
                         }
                         Expr::Identifier(id) => {
-                            self.ir
-                                .push_str(&format!("  %r{pk} =w call $puts(l ${id})\n"));
+                            let var = self.get_var(id);
+                            match var {
+                                Variable::Number(_) => {
+                                    // NOTE: here we could grab the number, save it to data section
+                                    // as a string and print it using puts instead
+                                    self.ir.push_str(&format!("  %v{pk} =w loadw ${id}\n"));
+                                    self.ir.push_str(&format!("  call $print_int(w %v{pk})\n"));
+                                }
+                                Variable::StringLiteral(_) => {
+                                    self.ir.push_str(&format!("  call $puts(l ${id})\n"))
+                                }
+                            }
                         }
                         _ => unimplemented!("Argument type is not supported"),
                     }
@@ -142,15 +150,16 @@ impl Compiler {
 
         self.ir.push_str("  ret 0\n}");
 
-        format!("{}\n\n{}", self.ir, self.data)
+        format!("{}\n{}", self.data, self.ir)
     }
 
     /// Compiles the AST by generating IR, running it through the `qbe` compiler, and then
     /// assembling and linking the output with `cc` to produce the final executable
     pub fn compile(&mut self, output_file: PathBuf) {
-        let ir = self.generate_ir();
+        let ir = format!("{}{}", include_str!("ext.ssa"), self.generate_ir());
+
         dbg("Variables", &self.variables);
-        dbg("Compiled IR", &ir);
+        dbg_plain("Compiled IR", &ir);
 
         let out_file_str = output_file.to_str().expect("invalid output file");
 
@@ -178,7 +187,11 @@ impl Compiler {
                     .expect("Failed to read qbe stdout");
             }
 
-            qbe.wait().expect("Failed to wait for qbe process");
+            let status = qbe.wait().expect("Failed to wait for qbe process");
+            if !status.success() {
+                eprintln!("Error: QBE backend error. This is a bug.");
+                exit(1);
+            }
         });
 
         dbg("QBE output", &qbe_output);
@@ -200,13 +213,18 @@ impl Compiler {
                     .expect("Failed to write to qbe stdin");
             }
 
+            // Get the CC output
             if let Some(mut stdout) = cc.stdout.take() {
                 stdout
                     .read_to_string(&mut cc_output)
                     .expect("Failed to read cc stdout");
             }
 
-            cc.wait().expect("Failed to wait for cc process");
+            let status = cc.wait().expect("Failed to wait for cc process");
+            if !status.success() {
+                eprintln!("Error: CC execution failed. This is a bug.");
+                exit(1);
+            }
         });
 
         dbg("CC output", &cc_output);

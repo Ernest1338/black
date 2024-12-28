@@ -1,6 +1,6 @@
 use std::{
     env,
-    fmt::Debug,
+    fmt::{Debug, Display},
     io::{stdout, Write},
     time::Instant,
 };
@@ -81,10 +81,25 @@ pub fn print_and_flush(m: &str) {
 pub fn dbg<T: Debug>(label: &str, value: &T) {
     // TODO: debug levels (DEBUG_LEVEL env var)
     // TODO: getter function for precached values for DEBUG and DEBUG_LEVEL vars
-    // and usage in both `dbg` and `dbg_pretty`
+    // and usage in both `dbg` and `dbg_pretty` and `dbg_plain`
     // NOTE: maybe a debug printer object?
     if env::var("DEBUG").is_ok() {
-        println!("{} {}: {value:?}", color("[DEBUG]", Color::Gray), color(&label, Color::LightPink));
+        println!(
+            "{} {}: {value:?}",
+            color("[DEBUG]", Color::Gray),
+            color(label, Color::LightPink)
+        );
+    }
+}
+
+/// Plain-prints a value with a label if the DEBUG environment variable is set
+pub fn dbg_plain<T: Display>(label: &str, value: &T) {
+    if env::var("DEBUG").is_ok() {
+        println!(
+            "{} {}: {value}",
+            color("[DEBUG]", Color::Gray),
+            color(label, Color::LightPink)
+        );
     }
 }
 
