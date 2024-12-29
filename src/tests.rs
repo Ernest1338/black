@@ -111,7 +111,7 @@ fn print_multiple_args() {
 }
 
 #[test]
-fn print_add() {
+fn print_bin_expr() {
     let code = r#"
 print(1+1)
 "#;
@@ -146,4 +146,26 @@ print(c, a + b)
     assert!(interpret(code) == expected);
     // FIXME
     // assert!(compile(code) == expected);
+}
+
+#[test]
+fn line_comments() {
+    let code = r#"
+print("a")
+// print("b")
+print("c")
+"#;
+    let expected = "a\nc";
+    assert!(interpret(code) == expected);
+    assert!(compile(code) == expected);
+}
+
+#[test]
+fn inline_comments() {
+    let code = r#"
+print("a") // print("b")
+"#;
+    let expected = "a";
+    assert!(interpret(code) == expected);
+    assert!(compile(code) == expected);
 }

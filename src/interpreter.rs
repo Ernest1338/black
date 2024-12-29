@@ -97,7 +97,9 @@ impl Interpreter {
     fn handle_func_call(&self, func_call: &FuncCall) {
         match func_call.name.as_ref() {
             "print" => {
-                for arg in &func_call.arguments {
+                let args = func_call.arguments.iter();
+                let args_count = args.len();
+                for (i, arg) in args.enumerate() {
                     match arg {
                         Expr::FuncCall(func_call) => self.handle_func_call(func_call),
                         Expr::BinExpr(bin_expr) => print!("{}", self.handle_bin_expr(bin_expr)),
@@ -106,7 +108,9 @@ impl Interpreter {
                         Expr::StringLiteral(s) => print!("{s}"),
                         _ => eprintln!("Invalid argument to print"),
                     }
-                    print!(" ");
+                    if i != args_count - 1 {
+                        print!(" ");
+                    }
                 }
 
                 println!();

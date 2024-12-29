@@ -91,7 +91,8 @@ impl FromStr for Token {
 pub fn preprocess(code: &str) -> String {
     // Handle comments
     code.lines()
-        .filter(|x| !x.starts_with("//"))
+        .filter(|l| !l.starts_with("//"))
+        .map(|l| l.split("//").nth(0).unwrap())
         .collect::<Vec<&str>>()
         .join(" ")
 }

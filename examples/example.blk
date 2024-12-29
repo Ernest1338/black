@@ -20,5 +20,5 @@ print(qwer)
 // adding two variables together
 let a = 1
 let b = 2
-let c = a + b
+let c = a + b // inline comment
 print(c, a + b)
