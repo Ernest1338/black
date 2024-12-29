@@ -1,6 +1,6 @@
 ---
 title: Documentation
-next: first-page
+next: getting-started
 ---
 
 This is a demo of the theme's documentation layout.

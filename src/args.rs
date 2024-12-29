@@ -9,11 +9,14 @@ Black Lang
 
 \x1b[92mFLAGS\x1b[00m:
   -h, --help            \x1b[90mPrints help information\x1b[00m
+  -V, --version         \x1b[90mPrints black version\x1b[00m
 
 \x1b[92mOPTIONS\x1b[00m:
   -o, --output PATH     \x1b[90mSets an output path (default: out.app)\x1b[00m
   -i, --interpreter     \x1b[90mUse interpreter instead of compiling to a binary\x1b[00m
 ";
+
+const VERSION: &str = "Black version: \x1b[92mv0.0.1\x1b[00m";
 
 /// Represents the parsed application arguments
 #[derive(Debug)]
@@ -30,6 +33,11 @@ fn parse_args() -> Result<AppArgs, pico_args::Error> {
     // Help has a higher priority and should be handled separately.
     if pargs.contains(["-h", "--help"]) {
         print!("{}", HELP);
+        exit(0);
+    }
+
+    if pargs.contains(["-V", "--version"]) {
+        print!("{}\n", VERSION);
         exit(0);
     }
 

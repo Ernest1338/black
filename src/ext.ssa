@@ -1,3 +1,22 @@
+# data $n1 = { w 2 }
+# data $n2 = { w 3 }
+# data $nl = { b "", b 0 }
+# data $f1 = { b "%i\n", b 0 }
+#
+# export function w $main() {
+# @start
+#     %v1 =w loadw $n1
+#     %v2 =w loadw $n2
+#     %r =w call $add(w %v1, w %v2)
+#
+#     call $print_int(w %r)
+#     call $puts(l $nl)
+#
+#     call $printf(l $f1, w %v1)
+#
+#     ret %r
+# }
+
 data $int_fmt = { b "%i\n", b 0 }
 
 export function $print_int(w %a0) {
