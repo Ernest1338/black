@@ -28,10 +28,17 @@ cargo build --release
 ### Interactive Mode
 To start the interactive mode, run the following command:
 ```sh
-./black -i
+./black
 ```
 
 You will see a prompt where you can enter Black code line by line. Type exit or quit to leave the interactive mode.
+
+### Interpreter
+To interpret a black file, use the following command
+```sh
+./black -i <path_to_source_file>
+```
+Replace <path_to_source_file> with the path to your Black source file.
 
 ### Compiling Source Files
 To compile a Black source file, use:
