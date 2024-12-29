@@ -1,2 +1,7 @@
 /target
 out.app
+
+# Hugo
+docs/public/
+docs/resources/
+.hugo_build.lock
