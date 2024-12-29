@@ -9,15 +9,15 @@ weight: 1
   {{< tab >}}
   Clone the `Ernest1338/black` repository:
   ```bash
-  git clone https://github.com/Ernest1338/black.git
+  $ git clone https://github.com/Ernest1338/black.git
   ```
   Navigate to the project directory:
   ```bash
-  cd black
+  $ cd black
   ```
   Use `cargo` to build the project:
   ```bash
-  cargo build --release
+  $ cargo build --release
   ```
   Black compiler / interpreter should now be accessible as a build aftifact at `./target/release/black`
   {{< /tab >}}
@@ -28,15 +28,15 @@ weight: 1
 
   Clone the `Ernest1338/black` repository:
   ```bash
-  git clone https://github.com/Ernest1338/black.git
+  $ git clone https://github.com/Ernest1338/black.git
   ```
   Navigate to the project directory:
   ```bash
-  cd black
+  $ cd black
   ```
   Use `cargo` to build the project:
   ```bash
-  cargo build --release
+  $ cargo build --release
   ```
   Black compiler / interpreter should now be accessible as a build aftifact at `./target/release/black`
   {{< /tab >}}
@@ -55,7 +55,7 @@ weight: 1
 
 While beeing in the `target/release` directory (or any other containing the black binary) execute:
 ```bash
-./black -V
+$ ./black -V
 ```
 
 You should see version information printed to the screen, similar to this:

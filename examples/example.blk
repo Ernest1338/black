@@ -1,21 +1,21 @@
 // print function call
 print("hello, world")
 
-// printing multiple things
+// printing multiple arguments
 print("hello", 123)
 
 // variable declaration
-let asdf = "hello, sailor"
+let greeting = "hello, sailor"
 
 // print binary expression
-print(1 + 1 + 67)
+print(1 + 2 + 3)
 
 // printing variable
-print(asdf)
+print(greeting)
 
 // creating a variable containing bin expr and printing it
-let qwer = 1 + 1
-print(qwer)
+let sum = 1 + 1
+print(sum)
 
 // adding two variables together
 let a = 1

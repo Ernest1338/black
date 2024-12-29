@@ -42,4 +42,4 @@ params:
 
   editURL:
     enable: true
-    base: "https://github.com/Ernest1338/black/docs/edit/main/content"
+    base: "https://github.com/Ernest1338/black/edit/main/docs/content"
