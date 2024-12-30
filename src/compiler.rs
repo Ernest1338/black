@@ -18,6 +18,7 @@ use std::{
 const QBE_BINARY: &[u8] = include_bytes!("/sbin/qbe");
 
 /// Unpacks QBE from memory into a temporary file. Don't forget to remove the tmp file afterwards
+// FIXME: qbe needs to be statically linked. As well as the output black binary
 fn get_qbe() -> Result<String, Box<dyn std::error::Error>> {
     // Get a unique temporary file path
     let tmp_path = get_tmp_fname("qbe");
