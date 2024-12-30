@@ -20,6 +20,7 @@ fn get_tmp_fname(prefix: &str) -> String {
 fn compile(code: &str) -> String {
     let code_fname = get_tmp_fname("blkcode");
     let bin_fname = get_tmp_fname("blkbin");
+    println!("CODEFNAME: {code_fname}\nBINFNAME: {bin_fname}");
 
     let mut tmp = OpenOptions::new()
         .write(true)
