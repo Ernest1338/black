@@ -1,14 +1,47 @@
+#![allow(dead_code)]
+
 use crate::{
     parser::{Ast, FuncCall, Variable, VariableDeclaration},
-    utils::{dbg, dbg_plain, measure_time},
+    utils::{dbg, dbg_plain, get_tmp_fname, measure_time},
     Expr,
 };
 use std::{
     collections::HashMap,
+    fs::{File, OpenOptions},
     io::{Read, Write},
+    os::unix::fs::PermissionsExt,
     path::PathBuf,
     process::{exit, Command, Stdio},
 };
+
+// TODO: not everywhere qbe is present in the /sbin/qbe path. Adjust accordingly
+const QBE_BINARY: &[u8] = include_bytes!("/sbin/qbe");
+
+/// Unpacks QBE from memory into a temporary file. Don't forget to remove the tmp file afterwards
+fn get_qbe() -> Result<String, Box<dyn std::error::Error>> {
+    // Get a unique temporary file path
+    let tmp_path = get_tmp_fname("qbe");
+
+    // Write the embedded QBE binary to the temporary file
+    {
+        let mut file = OpenOptions::new()
+            .write(true)
+            .create(true)
+            .truncate(true)
+            .open(&tmp_path)?;
+        file.write_all(QBE_BINARY)?;
+    }
+
+    // Make the file executable (Unix-specific; adjust for Windows)
+    #[cfg(unix)]
+    {
+        let mut permissions = File::open(&tmp_path)?.metadata()?.permissions();
+        permissions.set_mode(0o755); // Owner-executable permissions
+        File::open(&tmp_path)?.set_permissions(permissions)?;
+    }
+
+    Ok(tmp_path)
+}
 
 /// Represents a compiler that processes an abstract syntax tree (AST) and generates intermediate
 /// representation (IR), as well as handles variable management and function calls
@@ -17,7 +50,6 @@ pub struct Compiler {
     pub ir: String,
     pub data: String,
     pub primary_key: usize,
-    // TODO: Think about: Is this needed in the compiler?
     pub variables: HashMap<String, Variable>,
 }
 
@@ -166,8 +198,13 @@ impl Compiler {
 
         let mut qbe_output = String::new();
 
+        // Use system installed qbe
+        let qbe_path = String::from("qbe");
+        // Use qbe included with the compiler
+        // let qbe_path = get_qbe().expect("Failed to dynamically unpack QBE. This is a bug.");
+
         measure_time("QBE execution", || {
-            let mut qbe = Command::new("qbe")
+            let mut qbe = Command::new(&qbe_path)
                 .arg("-")
                 .stdin(Stdio::piped())
                 .stdout(Stdio::piped())
@@ -229,5 +266,8 @@ impl Compiler {
         });
 
         dbg("CC output", &cc_output);
+
+        // Clean up temporary qbe
+        // std::fs::remove_file(&qbe_path).unwrap();
     }
 }

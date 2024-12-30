@@ -1,25 +1,11 @@
 #![allow(dead_code)]
 
+use crate::utils::get_tmp_fname;
 use std::{
-    env,
     fs::{remove_file, OpenOptions},
     io::Write,
     process::Command,
-    time::{SystemTime, UNIX_EPOCH},
 };
-
-fn get_tmp_dir() -> String {
-    env::var("TMPDIR").unwrap_or("/tmp".to_string())
-}
-
-fn get_tmp_fname(prefix: &str) -> String {
-    let timestamp = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .expect("Time went backwards")
-        .as_nanos(); // Use nanoseconds for more uniqueness
-    let tmp_dir = get_tmp_dir();
-    format!("{tmp_dir}/{prefix}_{}.blk", timestamp)
-}
 
 fn compile(code: &str) -> String {
     let code_fname = get_tmp_fname("blkcode");

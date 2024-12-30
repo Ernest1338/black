@@ -2,7 +2,7 @@ use std::{
     env,
     fmt::{Debug, Display},
     io::{stdout, Write},
-    time::Instant,
+    time::{Instant, SystemTime, UNIX_EPOCH},
 };
 
 /// ANSI color codes for CLI output
@@ -62,6 +62,21 @@ impl Color {
             Color::Reset => "\x1b[00m",
         }
     }
+}
+
+/// Get temporary directory. Either /tmp or specified by the user using TMPDIR env var
+pub fn get_tmp_dir() -> String {
+    env::var("TMPDIR").unwrap_or("/tmp".to_string())
+}
+
+/// Get temporary file path. Uses get_tmp_dir for the base file path
+pub fn get_tmp_fname(prefix: &str) -> String {
+    let timestamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("Time went backwards")
+        .as_nanos(); // Use nanoseconds for more uniqueness
+    let tmp_dir = get_tmp_dir();
+    format!("{tmp_dir}/{prefix}_{timestamp}")
 }
 
 /// Wraps a string with the given ANSI color code
