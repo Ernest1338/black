@@ -31,3 +31,10 @@ jobs:
     - name: Run tests
       run: TMPDIR=${{ runner.temp }} cargo test --verbose -- --nocapture
 
+    - name: Upload binary artifact
+      if: success()
+      uses: actions/upload-artifact@v3
+      with:
+        name: black-binary
+        path: target/release/black
+
