@@ -25,8 +25,11 @@ jobs:
         cd qbe
         sudo make install
 
-    - name: Build
+    - name: Build Debug
       run: cargo build --verbose
+
+    - name: Build Release
+      run: cargo build --release --verbose
 
     - name: Run tests
       run: TMPDIR=${{ runner.temp }} cargo test --verbose -- --nocapture
