@@ -14,8 +14,8 @@ use std::{
     process::{exit, Command, Stdio},
 };
 
-// TODO: not everywhere qbe is present in the /sbin/qbe path. Adjust accordingly
-const QBE_BINARY: &[u8] = include_bytes!("/sbin/qbe");
+// FIXME: not everywhere qbe is present in the /sbin/qbe path. Adjust accordingly
+const QBE_BINARY: &[u8] = &[]; //  include_bytes!("/sbin/qbe");
 
 /// Unpacks QBE from memory into a temporary file. Don't forget to remove the tmp file afterwards
 // FIXME: qbe needs to be statically linked. As well as the output black binary
