@@ -21,7 +21,7 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -y build-essential
-        git clone https://c9x.me/git/qbe.git
+        git clone git://c9x.me/qbe.git
         cd qbe
         sudo make install
 
