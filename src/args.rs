@@ -37,7 +37,7 @@ fn parse_args() -> Result<AppArgs, pico_args::Error> {
     }
 
     if pargs.contains(["-V", "--version"]) {
-        print!("{}\n", VERSION);
+        println!("{}", VERSION);
         exit(0);
     }
 

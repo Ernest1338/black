@@ -92,7 +92,7 @@ pub fn preprocess(code: &str) -> String {
     // Handle comments
     code.lines()
         .filter(|l| !l.starts_with("//"))
-        .map(|l| l.split("//").nth(0).unwrap())
+        .map(|l| l.split("//").next().unwrap())
         .collect::<Vec<&str>>()
         .join(" ")
 }
