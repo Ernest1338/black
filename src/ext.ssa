@@ -17,7 +17,9 @@
 #     ret %r
 # }
 
-data $int_fmt = { b "%i\n", b 0 }
+data $int_fmt = { b "%i", b 0 }
+data $endl = { b "\n", b 0 }
+data $space = { b " ", b 0 }
 
 export function $print_int(w %a0) {
 @start

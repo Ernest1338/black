@@ -98,8 +98,7 @@ fn print_multiple_args() {
     let code = r#"print("hello", 1)"#;
     let expected = "hello 1";
     assert!(interpret(code) == expected);
-    // FIXME
-    // assert!(compile(code) == expected);
+    assert!(compile(code) == expected);
 }
 
 #[test]

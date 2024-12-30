@@ -88,22 +88,25 @@ impl Compiler {
     fn handle_func_call(&mut self, func_call: &FuncCall) {
         match func_call.name.as_ref() {
             "print" => {
-                for arg in func_call.arguments.iter() {
+                let args = func_call.arguments.iter();
+                let args_count = args.len();
+                for (i, arg) in args.enumerate() {
                     let pk = self.get_pk();
 
                     match arg {
                         Expr::StringLiteral(message) => {
                             let escaped = message.replace("\\", "\\\\").replace("\"", "\\\"");
+
                             self.data
                                 .push_str(&format!("data $v{pk} = {{ b \"{escaped}\", b 0 }}\n"));
-                            self.ir.push_str(&format!("  call $puts(l $v{pk})\n",));
+                            self.ir.push_str(&format!("  call $printf(l $v{pk})\n",));
                         }
                         Expr::Number(num) => {
                             let escaped =
                                 num.to_string().replace("\\", "\\\\").replace("\"", "\\\"");
                             self.data
                                 .push_str(&format!("data $v{pk} = {{ b \"{escaped}\", b 0 }}\n",));
-                            self.ir.push_str(&format!("  call $puts(l $v{pk})\n",));
+                            self.ir.push_str(&format!("  call $printf(l $v{pk})\n",));
                         }
                         Expr::Identifier(id) => {
                             let var = self.get_var(id);
@@ -115,13 +118,17 @@ impl Compiler {
                                     self.ir.push_str(&format!("  call $print_int(w %v{pk})\n"));
                                 }
                                 Variable::StringLiteral(_) => {
-                                    self.ir.push_str(&format!("  call $puts(l ${id})\n"))
+                                    self.ir.push_str(&format!("  call $printf(l ${id})\n"))
                                 }
                             }
                         }
                         _ => unimplemented!("Argument type is not supported"),
                     }
+                    if i != args_count - 1 {
+                        self.ir.push_str("  call $printf(l $space)\n");
+                    }
                 }
+                self.ir.push_str("  call $printf(l $endl)\n");
             }
             _ => unimplemented!("Function '{}' is not implemented", func_call.name),
         }
