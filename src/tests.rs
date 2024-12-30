@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 
 use std::{
+    env,
     fs::{remove_file, OpenOptions},
     io::Write,
     process::Command,
@@ -12,7 +13,8 @@ fn get_tmp_fname(prefix: &str) -> String {
         .duration_since(UNIX_EPOCH)
         .expect("Time went backwards")
         .as_nanos(); // Use nanoseconds for more uniqueness
-    format!("/tmp/{prefix}_{}.blk", timestamp)
+    let tmp_dir = env::var("TMPDIR").unwrap_or("/tmp".to_string());
+    format!("{tmp_dir}/{prefix}_{}.blk", timestamp)
 }
 
 fn compile(code: &str) -> String {
