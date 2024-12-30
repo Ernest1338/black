@@ -24,8 +24,6 @@ fn get_tmp_fname(prefix: &str) -> String {
 fn compile(code: &str) -> String {
     let code_fname = get_tmp_fname("blkcode");
     let bin_fname = get_tmp_fname("blkbin");
-    println!("TMPDIR: {}", get_tmp_dir());
-    println!("CODEFNAME: {code_fname}\nBINFNAME: {bin_fname}");
 
     let mut tmp = OpenOptions::new()
         .write(true)
@@ -35,46 +33,10 @@ fn compile(code: &str) -> String {
         .unwrap();
     tmp.write_all(code.as_bytes()).unwrap();
 
-    println!(
-        "1 ls tmpdir: {}",
-        String::from_utf8(
-            Command::new("ls")
-                .arg(get_tmp_dir())
-                .output()
-                .unwrap()
-                .stdout
-        )
-        .unwrap()
-    );
-
-    let out = Command::new("cargo")
-        .args([
-            "run",
-            "--verbose",
-            "--",
-            "--output",
-            &bin_fname,
-            &code_fname,
-        ])
+    Command::new("cargo")
+        .args(["run", "--", "--output", &bin_fname, &code_fname])
         .output()
         .expect("Failed to execute cargo");
-    println!(
-        "Cargo out: stderr: {}, stdout: {}",
-        String::from_utf8(out.stderr).unwrap(),
-        String::from_utf8(out.stdout).unwrap()
-    );
-
-    println!(
-        "2 ls tmpdir: {}",
-        String::from_utf8(
-            Command::new("ls")
-                .arg(get_tmp_dir())
-                .output()
-                .unwrap()
-                .stdout
-        )
-        .unwrap()
-    );
 
     let output = Command::new(&bin_fname)
         .output()
