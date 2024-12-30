@@ -51,6 +51,10 @@ weight: 1
 
 {{< /tabs >}}
 
+## Get a prebuilt binary from Github Actions
+
+TODO
+
 ## Install QBE backend
 
 TODO
