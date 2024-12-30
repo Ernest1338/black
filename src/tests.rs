@@ -8,18 +8,23 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
+fn get_tmp_dir() -> String {
+    env::var("TMPDIR").unwrap_or("/tmp".to_string())
+}
+
 fn get_tmp_fname(prefix: &str) -> String {
     let timestamp = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .expect("Time went backwards")
         .as_nanos(); // Use nanoseconds for more uniqueness
-    let tmp_dir = env::var("TMPDIR").unwrap_or("/tmp".to_string());
+    let tmp_dir = get_tmp_dir();
     format!("{tmp_dir}/{prefix}_{}.blk", timestamp)
 }
 
 fn compile(code: &str) -> String {
     let code_fname = get_tmp_fname("blkcode");
     let bin_fname = get_tmp_fname("blkbin");
+    println!("TMPDIR: {}", get_tmp_dir());
     println!("CODEFNAME: {code_fname}\nBINFNAME: {bin_fname}");
 
     let mut tmp = OpenOptions::new()
@@ -30,10 +35,34 @@ fn compile(code: &str) -> String {
         .unwrap();
     tmp.write_all(code.as_bytes()).unwrap();
 
+    println!(
+        "1 ls tmpdir: {}",
+        String::from_utf8(
+            Command::new("ls")
+                .arg(get_tmp_dir())
+                .output()
+                .unwrap()
+                .stdout
+        )
+        .unwrap()
+    );
+
     Command::new("cargo")
         .args(["run", "--", "--output", &bin_fname, &code_fname])
         .output()
         .expect("Failed to execute cargo");
+
+    println!(
+        "2 ls tmpdir: {}",
+        String::from_utf8(
+            Command::new("ls")
+                .arg(get_tmp_dir())
+                .output()
+                .unwrap()
+                .stdout
+        )
+        .unwrap()
+    );
 
     let output = Command::new(&bin_fname)
         .output()
