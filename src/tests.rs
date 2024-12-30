@@ -47,10 +47,22 @@ fn compile(code: &str) -> String {
         .unwrap()
     );
 
-    Command::new("cargo")
-        .args(["run", "--", "--output", &bin_fname, &code_fname])
+    let out = Command::new("cargo")
+        .args([
+            "run",
+            "--verbose",
+            "--",
+            "--output",
+            &bin_fname,
+            &code_fname,
+        ])
         .output()
         .expect("Failed to execute cargo");
+    println!(
+        "Cargo out: stderr: {}, stdout: {}",
+        String::from_utf8(out.stderr).unwrap(),
+        String::from_utf8(out.stdout).unwrap()
+    );
 
     println!(
         "2 ls tmpdir: {}",
