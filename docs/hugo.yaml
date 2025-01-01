@@ -1,3 +1,5 @@
+# start local server: hugo server --buildDrafts --disableFastRender
+
 baseURL: http://localhost/
 languageCode: en-us
 title: Black ☠︎︎
