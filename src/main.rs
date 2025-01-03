@@ -6,6 +6,9 @@ use std::{fs::read_to_string, io::stdin, process::exit};
 // - handling errors in rust (+ make interpreter not crash on error)
 // - color error messages, general cli output
 // - more test cases
+// - compiler: bin expr
+// - if expr
+// - fn expr
 
 mod args;
 use args::get_args;

@@ -3,18 +3,27 @@ use std::{iter::Peekable, str::FromStr};
 /// Represents different token types for the lexer
 #[derive(Debug, PartialEq, Clone)]
 pub enum Token {
+    // Keywords
     Let,
-    LeftParen,
-    RightParen,
+
+    // Operators
     Plus,
     Minus,
     Multiply,
     Divide,
-    Comma,
     Equals,
+
+    // Punctuation
+    LeftParen,
+    RightParen,
+    Comma,
+
+    // Identifiers
+    Identifier(String),
+
+    // Literals
     Number(i64),
     StringLiteral(String),
-    Identifier(String),
 }
 
 impl Token {
@@ -146,8 +155,8 @@ pub struct FuncCall {
 #[derive(Debug, Clone)]
 pub struct BinExpr {
     pub lhs: Expr,
-    pub kind: BinOpKind,
     pub rhs: Expr,
+    pub kind: BinOpKind,
 }
 
 /// Represents kinds of binary operators
