@@ -27,7 +27,7 @@ const INTERACTIVE_BANNER: &str = "\
 ╭──────────────────────╮
 │   ☠︎︎  \x1b[1mBlack Lang\x1b[00m  ☠︎︎   │
 │                      │
-│ ⚓\x1b[4mInteractive mode\x1b[00m   │
+│ ⚓ \x1b[4mInteractive mode\x1b[00m  │
 ╰──────────────────────╯
 ";
 

@@ -1,4 +1,7 @@
 # start local server: hugo server --buildDrafts --disableFastRender
+# inspiration for getting started:
+# - https://ziglang.org/learn/getting-started/
+# - https://harelang.org/tutorials/introduction
 
 baseURL: http://localhost/
 languageCode: en-us
