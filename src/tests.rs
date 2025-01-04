@@ -122,6 +122,18 @@ print(1*2+3)
 }
 
 #[test]
+fn print_complex_bin_expr_2() {
+    let code = r#"
+let a = 2*4
+let b = a*2
+print(1*b/2, a/b, a+b)
+"#;
+    let expected = "8 0 24";
+    assert!(interpret(code) == expected);
+    assert!(compile(code) == expected);
+}
+
+#[test]
 fn print_add_vars() {
     let code = r#"
 let a = 1
@@ -167,3 +179,30 @@ print("a") // print("b")
     assert!(interpret(code) == expected);
     assert!(compile(code) == expected);
 }
+
+#[test]
+fn variable_redefinition() {
+    let code = r#"
+let a = 1
+print(a)
+let a = 2
+print(a)
+"#;
+    let expected = "1\n2";
+    assert!(interpret(code) == expected);
+    // FIXME
+    // assert!(compile(code) == expected);
+}
+
+// #[test]
+// fn variable_mutability() {
+//     let code = r#"
+// let a = 1
+// print(a)
+// a = 2
+// print(a)
+// "#;
+//     let expected = "1\n2";
+//     assert!(interpret(code) == expected);
+//     assert!(compile(code) == expected);
+// }
