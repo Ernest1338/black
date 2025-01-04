@@ -95,32 +95,27 @@ impl Compiler {
                 let args = func_call.arguments.iter();
                 let args_count = args.len();
                 for (i, arg) in args.enumerate() {
-                    self.inc_pk();
+                    // self.inc_pk();
+                    let pk = self.get_pk();
 
                     match arg {
                         Expr::StringLiteral(message) => {
                             let escaped = message.replace("\\", "\\\\").replace("\"", "\\\"");
-                            self.data.push_str(&format!(
-                                "data $v{} = {{ b \"{escaped}\", b 0 }}\n",
-                                self.pk
-                            ));
-                            self.ir
-                                .push_str(&format!("  call $printf(l $v{})\n", self.pk));
+                            self.data
+                                .push_str(&format!("data $v{pk} = {{ b \"{escaped}\", b 0 }}\n"));
+                            self.ir.push_str(&format!("  call $printf(l $v{pk})\n"));
                         }
                         Expr::Number(num) => {
                             let escaped =
                                 num.to_string().replace("\\", "\\\\").replace("\"", "\\\"");
-                            self.data.push_str(&format!(
-                                "data $v{} = {{ b \"{escaped}\", b 0 }}\n",
-                                self.pk
-                            ));
-                            self.ir
-                                .push_str(&format!("  call $printf(l $v{})\n", self.pk));
+                            self.data
+                                .push_str(&format!("data $v{pk} = {{ b \"{escaped}\", b 0 }}\n"));
+                            self.ir.push_str(&format!("  call $printf(l $v{pk})\n"));
                         }
                         Expr::BinExpr(bin_expr) => {
-                            self.handle_bin_expr(bin_expr);
+                            let res_var = self.handle_bin_expr(bin_expr);
                             self.ir
-                                .push_str(&format!("  call $print_int(w %v{})\n", self.pk));
+                                .push_str(&format!("  call $print_int(w {res_var})\n"));
                         }
                         Expr::Identifier(id) => {
                             let var = self.get_var(id);
@@ -128,10 +123,8 @@ impl Compiler {
                                 Variable::Number(_) => {
                                     // NOTE: here we could grab the number, save it to data section
                                     // as a string and print it using puts instead
-                                    self.ir
-                                        .push_str(&format!("  %v{} =w loadw ${id}\n", self.pk));
-                                    self.ir
-                                        .push_str(&format!("  call $print_int(w %v{})\n", self.pk));
+                                    self.ir.push_str(&format!("  %v{pk} =w loadw ${id}\n"));
+                                    self.ir.push_str(&format!("  call $print_int(w %v{pk})\n"));
                                 }
                                 Variable::StringLiteral(_) => {
                                     self.ir.push_str(&format!("  call $printf(l ${id})\n"))
@@ -150,38 +143,55 @@ impl Compiler {
         }
     }
 
-    fn eval_operand(&self, operand: &Expr) -> i64 {
+    fn eval_operand(&mut self, operand: &Expr) -> String {
+        let pk = self.get_pk();
         match operand {
-            Expr::Number(n) => *n,
-            Expr::Identifier(id) => match self.get_var(id) {
-                // FIXME: generate ir that loadw the var into tmp var and use that
-                Variable::Number(n) => n,
-                _ => {
-                    eprintln!("Error: cannot add variable which is not a number");
-                    exit(1); // FIXME
-                }
-            },
-            _ => todo!(),
+            Expr::Number(n) => n.to_string(),
+            Expr::Identifier(id) => {
+                self.ir.push_str(&format!("  %op{pk} =w loadw ${id}\n"));
+                format!("%op{pk}")
+            }
+            Expr::BinExpr(bin_expr) => self.handle_bin_expr(bin_expr),
+            _ => unreachable!(),
         }
     }
 
-    fn handle_bin_expr(&mut self, bin_expr: &BinExpr) {
+    fn handle_bin_expr(&mut self, bin_expr: &BinExpr) -> String {
         let lhs = self.eval_operand(&bin_expr.lhs);
         let rhs = self.eval_operand(&bin_expr.rhs);
+        let pk = self.get_pk();
         self.ir.push_str(&format!(
-            "  %v{} =w {} {lhs}, {rhs}\n",
-            self.pk,
+            "  %v{pk} =w {} {lhs}, {rhs}\n",
             bin_expr.kind.to_str()
         ));
+        format!("%v{pk}")
     }
 
     /// Handles a variable declaration, storing the variable in the `variables` map and generating
     /// corresponding data and IR
     fn handle_var_decl(&mut self, variable_declaration: &VariableDeclaration) {
+        let var_label = format!("${}", variable_declaration.identifier);
         let value = match &variable_declaration.value {
-            Expr::Number(n) => Variable::Number(*n),
-            Expr::StringLiteral(s) => Variable::StringLiteral(s.to_owned()),
-            // Expr::BinExpr(bin_expr) => Variable::Number(self.handle_bin_expr(bin_expr)),
+            Expr::Number(n) => {
+                self.data
+                    .push_str(&format!("data {var_label} = {{ w {} }}\n", *n));
+                Variable::Number(*n)
+            }
+            Expr::StringLiteral(s) => {
+                self.data.push_str(&format!(
+                    "data {var_label} = {{ b \"{}\", b 0 }}\n",
+                    Variable::StringLiteral(s.to_owned())
+                ));
+                Variable::StringLiteral(s.to_owned())
+            }
+            Expr::BinExpr(bin_expr) => {
+                let res_var = self.handle_bin_expr(bin_expr);
+                self.data
+                    .push_str(&format!("data {var_label} = {{ w 0 }}\n"));
+                self.ir
+                    .push_str(&format!("  storew {res_var}, {var_label}\n"));
+                Variable::Number(0)
+            }
             _ => {
                 eprintln!("Error: Can only store strings and numbers in variables");
                 exit(1); // FIXME
@@ -190,28 +200,6 @@ impl Compiler {
         let id = variable_declaration.identifier.clone();
 
         self.variables.insert(id, value);
-
-        let var_label = format!("${}", variable_declaration.identifier);
-        match &variable_declaration.value {
-            Expr::Number(n) => {
-                self.data.push_str(&format!(
-                    "data {var_label} = {{ w {} }}\n",
-                    Variable::Number(*n)
-                ));
-            }
-            Expr::StringLiteral(s) => {
-                self.data.push_str(&format!(
-                    "data {var_label} = {{ b \"{}\", b 0 }}\n",
-                    Variable::StringLiteral(s.to_owned())
-                ));
-            }
-            // TODO
-            // Expr::BinExpr(bin_expr) => Variable::Number(self.handle_bin_expr(bin_expr)),
-            _ => {
-                eprintln!("Error: Can only store strings and numbers in variables");
-                exit(1); // FIXME
-            }
-        };
     }
 
     /// Generates the intermediate representation (IR) for the AST and returns it as a string
@@ -242,7 +230,7 @@ impl Compiler {
 
         dbg("Variables", &self.variables);
         // NOTE: disabled, too verbose
-        // dbg_plain("Compiled IR", &ir);
+        dbg_plain("Compiled IR", &ir);
 
         let out_file_str = output_file.to_str().expect("invalid output file");
 
@@ -283,7 +271,7 @@ impl Compiler {
         });
 
         // NOTE: disabled, too verbose
-        // dbg("QBE output", &qbe_output);
+        dbg("QBE output", &qbe_output);
 
         let mut cc_output = String::new();
 

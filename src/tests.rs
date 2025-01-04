@@ -118,8 +118,7 @@ print(1*2+3)
 "#;
     let expected = "5";
     assert!(interpret(code) == expected);
-    // FIXME
-    // assert!(compile(code) == expected);
+    assert!(compile(code) == expected);
 }
 
 #[test]
@@ -131,8 +130,7 @@ print(a+b)
 "#;
     let expected = "2";
     assert!(interpret(code) == expected);
-    // FIXME
-    // assert!(compile(code) == expected);
+    assert!(compile(code) == expected);
 }
 
 #[test]
@@ -145,8 +143,7 @@ print(c, a + b)
 "#;
     let expected = "2 2";
     assert!(interpret(code) == expected);
-    // FIXME
-    // assert!(compile(code) == expected);
+    assert!(compile(code) == expected);
 }
 
 #[test]
