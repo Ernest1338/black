@@ -84,6 +84,7 @@ impl Compiler {
         self.pk
     }
 
+    /// Increments the primary key without returning it
     fn inc_pk(&mut self) {
         self.pk += 1;
     }
@@ -143,6 +144,7 @@ impl Compiler {
         }
     }
 
+    /// Evaluates an operand expression and returns its result temporary variable
     fn eval_operand(&mut self, operand: &Expr) -> String {
         let pk = self.get_pk();
         match operand {
@@ -156,6 +158,8 @@ impl Compiler {
         }
     }
 
+    /// Handles a binary expression and generates corresponding IR. Returns temporary variable
+    /// containing the equation result
     fn handle_bin_expr(&mut self, bin_expr: &BinExpr) -> String {
         let lhs = self.eval_operand(&bin_expr.lhs);
         let rhs = self.eval_operand(&bin_expr.rhs);
