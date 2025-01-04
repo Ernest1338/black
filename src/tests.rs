@@ -108,6 +108,16 @@ print(1+1)
 "#;
     let expected = "2";
     assert!(interpret(code) == expected);
+    assert!(compile(code) == expected);
+}
+
+#[test]
+fn print_complex_bin_expr() {
+    let code = r#"
+print(1*2+3)
+"#;
+    let expected = "5";
+    assert!(interpret(code) == expected);
     // FIXME
     // assert!(compile(code) == expected);
 }

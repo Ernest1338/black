@@ -17,13 +17,13 @@
 #     ret %r
 # }
 
-data $int_fmt = { b "%i", b 0 }
+data $fmt_int = { b "%i", b 0 }
 data $endl = { b "\n", b 0 }
 data $space = { b " ", b 0 }
 
 export function $print_int(w %a0) {
 @start
-    call $printf(l $int_fmt, w %a0)
+    call $printf(l $fmt_int, w %a0)
     ret
 }
 

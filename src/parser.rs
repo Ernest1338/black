@@ -168,7 +168,20 @@ pub enum BinOpKind {
     Divide,
 }
 
+impl BinOpKind {
+    /// Returns a string representation of the binary operation
+    pub fn to_str(&self) -> &str {
+        match self {
+            BinOpKind::Plus => "add",
+            BinOpKind::Minus => "sub",
+            BinOpKind::Multiply => "mul",
+            BinOpKind::Divide => "div",
+        }
+    }
+}
+
 /// Represents variables in the AST
+// NOTE: Can we store just Expr in the variables? it would allow storing eg functions into vars
 #[derive(Debug, Clone)]
 pub enum Variable {
     Number(i64),

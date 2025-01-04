@@ -96,7 +96,8 @@ fn main() {
     // Parsing
     let mut parser = Parser::new(&tokens);
     let ast = measure_time("Parsing", || parser.parse().expect("Parser failed"));
-    dbg_pretty("AST", &ast);
+    // NOTE: disabled, too verbose
+    // dbg_pretty("AST", &ast);
 
     if args.interpreter {
         // Interpreter
