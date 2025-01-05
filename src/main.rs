@@ -6,10 +6,10 @@ use std::{
 };
 
 // TODO:
+// - test cases for compiler cli
 // - good compiler errors with line numbers
 // - handling errors in rust (+ make interpreter not crash on error)
 // - color error messages, general cli output
-// - more test cases
 // - if, else expr
 // - fn expr
 // - type checker
@@ -17,6 +17,7 @@ use std::{
 // - linter
 // - formatter
 // - build system (toml? github repos as packages. line eg. Ernest1338/package = "0.1")
+// - more test cases
 
 mod args;
 use args::get_args;
