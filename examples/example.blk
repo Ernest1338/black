@@ -14,7 +14,8 @@ print(1 + 2 + 3)
 print(greeting)
 
 // creating a variable containing bin expr and printing it
-let sum = 1 + 1
+// give the sum variable type "int"
+let int sum = 1 + 1
 print(sum)
 
 // adding two variables together

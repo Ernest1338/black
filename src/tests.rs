@@ -194,6 +194,40 @@ print(a)
     // assert!(compile(code) == expected);
 }
 
+#[test]
+fn example_hello_world() {
+    let code = include_str!("../examples/helloworld.blk");
+    let expected = "Hello, World!";
+    assert!(interpret(code) == expected);
+    assert!(compile(code) == expected);
+}
+
+#[test]
+fn example_example() {
+    let code = include_str!("../examples/example.blk");
+    let expected = "\
+hello, world
+hello 123
+6
+hello, sailor
+2
+3 3";
+    assert!(interpret(code) == expected);
+    assert!(compile(code) == expected);
+}
+
+#[test]
+fn variable_types() {
+    let code = r#"
+let int a = 1
+let str b = "test"
+print(a, b)
+"#;
+    let expected = "1 test";
+    assert!(interpret(code) == expected);
+    assert!(compile(code) == expected);
+}
+
 // #[test]
 // fn variable_mutability() {
 //     let code = r#"

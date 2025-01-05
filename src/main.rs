@@ -8,6 +8,7 @@ use std::{fs::read_to_string, io::stdin, process::exit};
 // - more test cases
 // - if, else expr
 // - fn expr
+// - type checker
 
 mod args;
 use args::get_args;

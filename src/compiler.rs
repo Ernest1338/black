@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 use crate::{
-    parser::{Ast, BinExpr, FuncCall, Variable, VariableDeclaration},
+    parser::{Ast, BinExpr, FuncCall, Type, Variable, VariableDeclaration},
     utils::{dbg, dbg_plain, get_tmp_fname, measure_time},
     Expr,
 };
@@ -183,6 +183,12 @@ impl Compiler {
                 Variable::Number(*n)
             }
             Expr::StringLiteral(s) => {
+                if variable_declaration.typ.is_some() {
+                    if variable_declaration.typ != Some(Type::Str) {
+                        eprintln!("Error: Variable type 'str' but value is not a string");
+                        exit(1); // FIXME
+                    }
+                }
                 self.data.push_str(&format!(
                     "data {var_label} = {{ b \"{}\", b 0 }}\n",
                     Variable::StringLiteral(s.to_owned())

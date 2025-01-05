@@ -13,6 +13,9 @@ pub enum Token {
     Divide,
     Equals,
 
+    // Types
+    Type(Type),
+
     // Punctuation
     LeftParen,
     RightParen,
@@ -24,6 +27,16 @@ pub enum Token {
     // Literals
     Number(i64),
     StringLiteral(String),
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum Type {
+    Int,
+    Long,
+    Float,
+    Double,
+    Str,
+    None,
 }
 
 impl Token {
@@ -42,6 +55,12 @@ impl Token {
             | Token::Divide
             | Token::Equals
             | Token::Comma => 1,
+            Token::Type(Type::Int) => 3,
+            Token::Type(Type::Long) => 4,
+            Token::Type(Type::Float) => 5,
+            Token::Type(Type::Double) => 6,
+            Token::Type(Type::Str) => 3,
+            Token::Type(Type::None) => 0,
         }
     }
 }
@@ -65,6 +84,41 @@ impl FromStr for Token {
         // Token::Let
         if s.starts_with("let") && s[Token::Let.len()..].starts_with(|c: char| c.is_whitespace()) {
             return Ok(Token::Let);
+        }
+
+        // Token::Int
+        if s.starts_with("int")
+            && s[Token::Type(Type::Int).len()..].starts_with(|c: char| c.is_whitespace())
+        {
+            return Ok(Token::Type(Type::Int));
+        }
+
+        // Token::Long
+        if s.starts_with("long")
+            && s[Token::Type(Type::Long).len()..].starts_with(|c: char| c.is_whitespace())
+        {
+            return Ok(Token::Type(Type::Long));
+        }
+
+        // Token::Float
+        if s.starts_with("float")
+            && s[Token::Type(Type::Float).len()..].starts_with(|c: char| c.is_whitespace())
+        {
+            return Ok(Token::Type(Type::Float));
+        }
+
+        // Token::Double
+        if s.starts_with("double")
+            && s[Token::Type(Type::Double).len()..].starts_with(|c: char| c.is_whitespace())
+        {
+            return Ok(Token::Type(Type::Double));
+        }
+
+        // Token::Str
+        if s.starts_with("str")
+            && s[Token::Type(Type::Str).len()..].starts_with(|c: char| c.is_whitespace())
+        {
+            return Ok(Token::Type(Type::Str));
         }
 
         // Token::StringLiteral
@@ -141,6 +195,7 @@ pub enum Expr {
 #[derive(Debug, Clone)]
 pub struct VariableDeclaration {
     pub identifier: String,
+    pub typ: Option<Type>,
     pub value: Expr,
 }
 
@@ -294,19 +349,33 @@ impl<'a> Parser<'a> {
     /// Parses variable declarations
     pub fn parse_variable_declaration(&mut self) -> Result<Expr, String> {
         self.iter.next(); // Consume `Token::Let`
-        if let Some(Token::Identifier(name)) = self.iter.next() {
-            if let Some(Token::Equals) = self.iter.next() {
-                let value = self.parse_expr()?;
-                Ok(Expr::VariableDeclaration(Box::new(VariableDeclaration {
-                    identifier: name.clone(),
-                    value,
-                })))
-            } else {
-                Err("Expected '=' after variable name".to_string())
-            }
+
+        let typ = if let Some(Token::Type(t)) = self.iter.peek() {
+            let t = t.clone();
+            self.iter.next(); // Consume the type token
+            Some(t)
         } else {
-            Err("Expected identifier after 'let'".to_string())
+            None
+        };
+
+        let identifier = self
+            .iter
+            .next()
+            .and_then(|token| match token {
+                Token::Identifier(id) => Some(id),
+                _ => None,
+            })
+            .ok_or("Expected identifier after variable type")?;
+
+        if self.iter.next() != Some(&Token::Equals) {
+            return Err("Expected '=' after variable name".to_string());
         }
+
+        Ok(Expr::VariableDeclaration(Box::new(VariableDeclaration {
+            identifier: identifier.to_string(),
+            typ,
+            value: self.parse_expr()?,
+        })))
     }
 
     /// Parses general expressions
