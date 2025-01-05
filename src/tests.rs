@@ -1,10 +1,14 @@
-#![allow(dead_code)]
+#![allow(dead_code, unused_imports)]
 
-use crate::utils::get_tmp_fname;
+use crate::{
+    args::{get_args, AppArgs},
+    utils::get_tmp_fname,
+};
 use std::{
     fs::{remove_file, OpenOptions},
     io::Write,
-    process::Command,
+    path::PathBuf,
+    process::{Command, Output},
 };
 
 fn compile(code: &str) -> String {
@@ -53,6 +57,56 @@ fn interpret(code: &str) -> String {
     remove_file(code_fname).unwrap();
 
     String::from_utf8_lossy(&output.stdout).trim().to_string()
+}
+
+fn run_compiler(compiler_args: Vec<&str>) -> Output {
+    let mut args = vec!["run", "--"];
+    args.extend(compiler_args);
+
+    let tmp_fname = get_tmp_fname("blkcode");
+    let should_create_tmp = args.contains(&"TMP");
+
+    // Replace TMP with temporary file path
+    if should_create_tmp {
+        for element in &mut args {
+            if element == &"TMP" {
+                *element = &tmp_fname;
+            }
+        }
+
+        // Write hello world to the temporary file
+        let mut tmp = OpenOptions::new()
+            .write(true)
+            .create(true)
+            .truncate(true)
+            .open(tmp_fname.clone())
+            .unwrap();
+        tmp.write_all("print(\"Hello, World!\")\n".as_bytes())
+            .unwrap();
+    }
+
+    let out = Command::new("cargo")
+        .args(args.clone())
+        .output()
+        .expect("Failed to execute cargo");
+
+    // Remove the temporary file
+    if should_create_tmp {
+        remove_file(tmp_fname).unwrap();
+    }
+
+    out
+}
+
+fn get_stdout(out: &Output) -> String {
+    String::from_utf8(out.stdout.clone())
+        .expect("Failed to get stdout")
+        .trim()
+        .to_string()
+}
+
+fn args(args: &[&str]) -> Vec<String> {
+    args.iter().map(|e| e.to_string()).collect()
 }
 
 #[test]
@@ -240,3 +294,83 @@ print(a, b)
 //     assert!(interpret(code) == expected);
 //     assert!(compile(code) == expected);
 // }
+
+#[test]
+fn cli_help() {
+    let out = run_compiler(vec!["-h"]);
+    let stdout = get_stdout(&out);
+
+    assert!(out.status.success());
+    assert!(stdout.contains("USAGE"));
+}
+
+#[test]
+fn cli_version() {
+    let out = run_compiler(vec!["-V"]);
+    let stdout = get_stdout(&out);
+
+    assert!(out.status.success());
+    assert!(stdout.contains("version"));
+}
+
+// NOTE: already covered by some previous tests
+// #[test]
+// fn cli_interpreter() {
+//     let out = run_compiler(vec!["-i", "TMP"]);
+//     let stdout = get_stdout(&out);
+//
+//     assert!(out.status.success());
+//     assert!(stdout == "Hello, World!");
+// }
+
+#[test]
+fn args_interpreter() {
+    let app_args = get_args(args(&["binary", "-i", "input"]));
+    assert!(
+        app_args
+            == AppArgs {
+                input: Some(PathBuf::from("input")),
+                interpreter: true,
+                build_and_run: false,
+                output: PathBuf::from("out.app")
+            }
+    );
+}
+
+#[test]
+fn args_compiler_out() {
+    let app_args = get_args(args(&["binary", "-o", "outfile"]));
+    assert!(
+        app_args
+            == AppArgs {
+                input: None,
+                interpreter: false,
+                build_and_run: false,
+                output: PathBuf::from("outfile")
+            }
+    );
+}
+
+#[test]
+fn args_build_and_run_out() {
+    let app_args = get_args(args(&["binary", "-r", "-o", "outfile"]));
+    assert!(
+        app_args
+            == AppArgs {
+                input: None,
+                interpreter: false,
+                build_and_run: true,
+                output: PathBuf::from("outfile")
+            }
+    );
+    let app_args = get_args(args(&["binary", "-o", "outfile", "-r"]));
+    assert!(
+        app_args
+            == AppArgs {
+                input: None,
+                interpreter: false,
+                build_and_run: true,
+                output: PathBuf::from("outfile")
+            }
+    );
+}

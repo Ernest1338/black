@@ -6,7 +6,6 @@ use std::{
 };
 
 // TODO:
-// - test cases for compiler cli
 // - good compiler errors with line numbers
 // - handling errors in rust (+ make interpreter not crash on error)
 // - color error messages, general cli output
@@ -45,10 +44,12 @@ const INTERACTIVE_BANNER: &str = "\
 
 /// Entry point of the language CLI
 fn main() {
-    let args = get_args();
+    let args = get_args(std::env::args().collect());
 
     if args.input.is_none() {
+        // ----------------
         // Interactive mode
+        // ----------------
         print_and_flush(INTERACTIVE_BANNER);
         let mut interpreter = Interpreter::default();
         loop {
@@ -108,16 +109,19 @@ fn main() {
     dbg_pretty("AST", &ast);
 
     if args.interpreter {
+        // -----------
         // Interpreter
+        // -----------
         let mut interpreter = Interpreter::from_ast(ast);
         measure_time("Interpreter Execution", || interpreter.run());
     } else if args.build_and_run {
-        // Compile
+        // ---------------
+        // Compile and run
+        // ---------------
         let mut compiler = Compiler::from_ast(ast);
         measure_time("Full Compiler Execution", || {
             compiler.compile(args.output.clone())
         });
-        // Run
         let absolute_path =
             canonicalize(args.output).expect("Error: Failed to get binary absolute path");
         Command::new(absolute_path)
@@ -129,7 +133,9 @@ fn main() {
             .wait()
             .expect("Failed to wait for the binary to finish execution");
     } else {
+        // --------
         // Compiler
+        // --------
         let mut compiler = Compiler::from_ast(ast);
         measure_time("Full Compiler Execution", || compiler.compile(args.output));
     }

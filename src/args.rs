@@ -1,4 +1,4 @@
-use std::{env, path::PathBuf, process::exit};
+use std::{path::PathBuf, process::exit};
 
 const HELP: &str = "\
 Black Lang
@@ -18,7 +18,7 @@ Black Lang
 
 const VERSION: &str = "Black version: \x1b[92mv0.0.1\x1b[00m";
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct AppArgs {
     pub input: Option<PathBuf>,
     pub interpreter: bool,
@@ -26,13 +26,14 @@ pub struct AppArgs {
     pub output: PathBuf,
 }
 
-pub fn get_args() -> AppArgs {
+pub fn get_args(args: Vec<String>) -> AppArgs {
+    let mut args = args.iter().skip(1); // Skip the program name
+
     let mut input = None;
     let mut output = PathBuf::from("out.app");
     let mut interpreter = false;
     let mut build_and_run = false;
 
-    let mut args = env::args().skip(1); // Skip the program name
     while let Some(arg) = args.next() {
         match arg.as_str() {
             "-h" | "--help" => {
