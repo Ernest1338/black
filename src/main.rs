@@ -2,6 +2,7 @@ use crate::{compiler::Compiler, interpreter::Interpreter};
 use std::{fs::read_to_string, io::stdin, process::exit};
 
 // TODO:
+// - build and run --run -r
 // - good compiler errors with line numbers
 // - handling errors in rust (+ make interpreter not crash on error)
 // - color error messages, general cli output
@@ -9,6 +10,10 @@ use std::{fs::read_to_string, io::stdin, process::exit};
 // - if, else expr
 // - fn expr
 // - type checker
+// - static build, static qbe in release gh
+// - linter
+// - formatter
+// - build system (toml? github repos as packages. line eg. Ernest1338/package = "0.1")
 
 mod args;
 use args::get_args;

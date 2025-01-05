@@ -70,58 +70,43 @@ impl FromStr for Token {
 
     /// Parses a string into a Token, if possible
     fn from_str(s: &str) -> Result<Token, ()> {
-        // Token::Number
+        // Helper for parsing keywords followed by whitespace
+        fn parse_keyword(s: &str, keyword: &str, token: Token) -> Option<Token> {
+            if s.starts_with(keyword) && s[keyword.len()..].starts_with(|c: char| c.is_whitespace())
+            {
+                Some(token)
+            } else {
+                None
+            }
+        }
+
+        // Parse numeric tokens
         if let Some(c) = s.chars().next() {
             if c.is_ascii_digit() {
                 let number_str: String = s.chars().take_while(|ch| ch.is_ascii_digit()).collect();
-
                 if let Ok(number) = number_str.parse::<i64>() {
                     return Ok(Token::Number(number));
                 }
             }
         }
 
-        // Token::Let
-        if s.starts_with("let") && s[Token::Let.len()..].starts_with(|c: char| c.is_whitespace()) {
-            return Ok(Token::Let);
+        // Keywords and types
+        let keywords = [
+            ("let", Token::Let),
+            ("int", Token::Type(Type::Int)),
+            ("long", Token::Type(Type::Long)),
+            ("float", Token::Type(Type::Float)),
+            ("double", Token::Type(Type::Double)),
+            ("str", Token::Type(Type::Str)),
+        ];
+
+        for &(keyword, ref token) in &keywords {
+            if let Some(parsed_token) = parse_keyword(s, keyword, token.clone()) {
+                return Ok(parsed_token);
+            }
         }
 
-        // Token::Int
-        if s.starts_with("int")
-            && s[Token::Type(Type::Int).len()..].starts_with(|c: char| c.is_whitespace())
-        {
-            return Ok(Token::Type(Type::Int));
-        }
-
-        // Token::Long
-        if s.starts_with("long")
-            && s[Token::Type(Type::Long).len()..].starts_with(|c: char| c.is_whitespace())
-        {
-            return Ok(Token::Type(Type::Long));
-        }
-
-        // Token::Float
-        if s.starts_with("float")
-            && s[Token::Type(Type::Float).len()..].starts_with(|c: char| c.is_whitespace())
-        {
-            return Ok(Token::Type(Type::Float));
-        }
-
-        // Token::Double
-        if s.starts_with("double")
-            && s[Token::Type(Type::Double).len()..].starts_with(|c: char| c.is_whitespace())
-        {
-            return Ok(Token::Type(Type::Double));
-        }
-
-        // Token::Str
-        if s.starts_with("str")
-            && s[Token::Type(Type::Str).len()..].starts_with(|c: char| c.is_whitespace())
-        {
-            return Ok(Token::Type(Type::Str));
-        }
-
-        // Token::StringLiteral
+        // String literal
         if let Some(stripped) = s.strip_prefix('"') {
             if let Some(end_quote) = stripped.find('"') {
                 let string_content = &stripped[..end_quote];
@@ -129,24 +114,31 @@ impl FromStr for Token {
             }
         }
 
-        // Token::Identifier
+        // Identifier
         if s.starts_with(|c: char| c.is_alphabetic()) {
             let identifier: String = s.chars().take_while(|c| c.is_alphanumeric()).collect();
             return Ok(Token::Identifier(identifier));
         }
 
-        // Single char tokens
-        match s.chars().next() {
-            Some('+') => Ok(Token::Plus),
-            Some('-') => Ok(Token::Minus),
-            Some('*') => Ok(Token::Multiply),
-            Some('/') => Ok(Token::Divide),
-            Some('(') => Ok(Token::LeftParen),
-            Some(')') => Ok(Token::RightParen),
-            Some('=') => Ok(Token::Equals),
-            Some(',') => Ok(Token::Comma),
-            _ => Err(()),
+        // Single-character tokens
+        let single_char_tokens = [
+            ('+', Token::Plus),
+            ('-', Token::Minus),
+            ('*', Token::Multiply),
+            ('/', Token::Divide),
+            ('(', Token::LeftParen),
+            (')', Token::RightParen),
+            ('=', Token::Equals),
+            (',', Token::Comma),
+        ];
+
+        if let Some(&c) = s.chars().next().as_ref() {
+            if let Some((_, token)) = single_char_tokens.iter().find(|&&(ch, _)| ch == c) {
+                return Ok(token.clone());
+            }
         }
+
+        Err(())
     }
 }
 
