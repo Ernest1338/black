@@ -96,7 +96,6 @@ impl Compiler {
                 let args = func_call.arguments.iter();
                 let args_count = args.len();
                 for (i, arg) in args.enumerate() {
-                    // self.inc_pk();
                     let pk = self.get_pk();
 
                     match arg {
@@ -116,7 +115,7 @@ impl Compiler {
                         Expr::BinExpr(bin_expr) => {
                             let res_var = self.handle_bin_expr(bin_expr);
                             self.ir
-                                .push_str(&format!("  call $print_int(w {res_var})\n"));
+                                .push_str(&format!("  call $printf(l $fmt_int, w {res_var})\n"));
                         }
                         Expr::Identifier(id) => {
                             let var = self.get_var(id);
@@ -125,7 +124,9 @@ impl Compiler {
                                     // NOTE: here we could grab the number, save it to data section
                                     // as a string and print it using puts instead
                                     self.ir.push_str(&format!("  %v{pk} =w loadw ${id}\n"));
-                                    self.ir.push_str(&format!("  call $print_int(w %v{pk})\n"));
+                                    self.ir.push_str(&format!(
+                                        "  call $printf(l $fmt_int, w %v{pk})\n"
+                                    ));
                                 }
                                 Variable::StringLiteral(_) => {
                                     self.ir.push_str(&format!("  call $printf(l ${id})\n"))
