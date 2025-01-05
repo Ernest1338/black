@@ -124,7 +124,9 @@ fn main() {
             .stdin(Stdio::inherit())
             .stderr(Stdio::inherit())
             .spawn()
-            .expect("Failed to execute binary");
+            .expect("Failed to execute binary")
+            .wait()
+            .expect("Failed to wait for the binary to finish execution");
     } else {
         // Compiler
         let mut compiler = Compiler::from_ast(ast);

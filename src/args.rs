@@ -43,12 +43,8 @@ pub fn get_args() -> AppArgs {
                 println!("{}", VERSION);
                 exit(0);
             }
-            "-i" | "--interpreter" => {
-                interpreter = true;
-            }
-            "-r" | "--run" => {
-                build_and_run = true;
-            }
+            "-i" | "--interpreter" => interpreter = true,
+            "-r" | "--run" => build_and_run = true,
             "-o" | "--output" => {
                 output = args.next().map(PathBuf::from).unwrap_or_else(|| {
                     eprintln!("Error: Missing output path after -o/--output");
