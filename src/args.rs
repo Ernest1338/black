@@ -13,6 +13,7 @@ Black Lang
 \x1b[92mOPTIONS\x1b[00m:
   -o, --output PATH     \x1b[90mSets an output path (default: out.app)\x1b[00m
   -i, --interpreter     \x1b[90mUse interpreter instead of compiling to a binary\x1b[00m
+  -r, --run             \x1b[90mBuild and run a file\x1b[00m
 ";
 
 const VERSION: &str = "Black version: \x1b[92mv0.0.1\x1b[00m";
