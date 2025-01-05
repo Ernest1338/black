@@ -1,6 +1,5 @@
-use std::{path::PathBuf, process::exit};
+use std::{env, path::PathBuf, process::exit};
 
-/// Help message displayed when the user requests help
 const HELP: &str = "\
 Black Lang
 
@@ -18,65 +17,55 @@ Black Lang
 
 const VERSION: &str = "Black version: \x1b[92mv0.0.1\x1b[00m";
 
-/// Represents the parsed application arguments
 #[derive(Debug)]
 pub struct AppArgs {
     pub input: Option<PathBuf>,
     pub interpreter: bool,
+    pub build_and_run: bool,
     pub output: PathBuf,
 }
 
-/// Parses command-line arguments and returns an `AppArgs` struct with the parsed values
-fn parse_args() -> Result<AppArgs, pico_args::Error> {
-    let mut pargs = pico_args::Arguments::from_env();
-
-    // Help has a higher priority and should be handled separately.
-    if pargs.contains(["-h", "--help"]) {
-        print!("{}", HELP);
-        exit(0);
-    }
-
-    if pargs.contains(["-V", "--version"]) {
-        println!("{}", VERSION);
-        exit(0);
-    }
-
-    let interpreter = pargs.contains(["-i", "--interpreter"]);
-
-    let args = AppArgs {
-        // Parses an optional value from `&OsStr` using a specified function.
-        output: pargs
-            .opt_value_from_os_str(["-o", "--output"], parse_path)?
-            .unwrap_or(PathBuf::from("out.app")),
-        interpreter,
-        // Parses free-standing/positional argument.
-        input: pargs.opt_free_from_str()?,
-    };
-
-    // It's up to the caller what to do with the remaining arguments.
-    let remaining = pargs.finish();
-    if !remaining.is_empty() {
-        eprintln!("Warning: unused arguments left: {:?}.", remaining);
-    }
-
-    Ok(args)
-}
-
-/// Retrieves the application arguments, parsing and handling any errors
 pub fn get_args() -> AppArgs {
-    match parse_args() {
-        Ok(v) => v,
-        Err(e) => {
-            match e {
-                pico_args::Error::MissingArgument => eprintln!("Error: No input files"),
-                _ => eprintln!("Error: {}", e),
+    let mut input = None;
+    let mut output = PathBuf::from("out.app");
+    let mut interpreter = false;
+    let mut build_and_run = false;
+
+    let mut args = env::args().skip(1); // Skip the program name
+    while let Some(arg) = args.next() {
+        match arg.as_str() {
+            "-h" | "--help" => {
+                print!("{}", HELP);
+                exit(0);
             }
-            exit(0);
+            "-V" | "--version" => {
+                println!("{}", VERSION);
+                exit(0);
+            }
+            "-i" | "--interpreter" => {
+                interpreter = true;
+            }
+            "-r" | "--run" => {
+                build_and_run = true;
+            }
+            "-o" | "--output" => {
+                output = args.next().map(PathBuf::from).unwrap_or_else(|| {
+                    eprintln!("Error: Missing output path after -o/--output");
+                    exit(1);
+                });
+            }
+            _ if input.is_none() => input = Some(PathBuf::from(arg)),
+            _ => {
+                eprintln!("Error: Unexpected argument '{}'", arg);
+                exit(1);
+            }
         }
     }
-}
 
-/// Converts a given `OsStr` to a `PathBuf`
-fn parse_path(s: &std::ffi::OsStr) -> Result<std::path::PathBuf, &'static str> {
-    Ok(s.into())
+    AppArgs {
+        input,
+        interpreter,
+        build_and_run,
+        output,
+    }
 }

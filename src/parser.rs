@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use std::{iter::Peekable, str::FromStr};
 
 /// Represents different token types for the lexer

@@ -1,8 +1,11 @@
 use crate::{compiler::Compiler, interpreter::Interpreter};
-use std::{fs::read_to_string, io::stdin, process::exit};
+use std::{
+    fs::{canonicalize, read_to_string},
+    io::stdin,
+    process::{exit, Command, Stdio},
+};
 
 // TODO:
-// - build and run --run -r
 // - good compiler errors with line numbers
 // - handling errors in rust (+ make interpreter not crash on error)
 // - color error messages, general cli output
@@ -101,13 +104,27 @@ fn main() {
     // Parsing
     let mut parser = Parser::new(&tokens);
     let ast = measure_time("Parsing", || parser.parse().expect("Parser failed"));
-    // NOTE: disabled, too verbose
     dbg_pretty("AST", &ast);
 
     if args.interpreter {
         // Interpreter
         let mut interpreter = Interpreter::from_ast(ast);
         measure_time("Interpreter Execution", || interpreter.run());
+    } else if args.build_and_run {
+        // Compile
+        let mut compiler = Compiler::from_ast(ast);
+        measure_time("Full Compiler Execution", || {
+            compiler.compile(args.output.clone())
+        });
+        // Run
+        let absolute_path =
+            canonicalize(args.output).expect("Error: Failed to get binary absolute path");
+        Command::new(absolute_path)
+            .stdout(Stdio::inherit())
+            .stdin(Stdio::inherit())
+            .stderr(Stdio::inherit())
+            .spawn()
+            .expect("Failed to execute binary");
     } else {
         // Compiler
         let mut compiler = Compiler::from_ast(ast);

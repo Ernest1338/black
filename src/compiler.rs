@@ -239,7 +239,6 @@ impl Compiler {
         let ir = format!("{}{}", include_str!("ext.ssa"), self.generate_ir());
 
         dbg("Variables", &self.variables);
-        // NOTE: disabled, too verbose
         dbg_plain("Compiled IR", &ir);
 
         let out_file_str = output_file.to_str().expect("invalid output file");
@@ -280,7 +279,6 @@ impl Compiler {
             }
         });
 
-        // NOTE: disabled, too verbose
         dbg("QBE output", &qbe_output);
 
         let mut cc_output = String::new();
