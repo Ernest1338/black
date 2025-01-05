@@ -73,22 +73,12 @@ impl FromStr for Token {
     /// Parses a string into a Token, if possible
     fn from_str(s: &str) -> Result<Token, ()> {
         // Helper for parsing keywords followed by whitespace
-        fn parse_keyword(s: &str, keyword: &str, token: Token) -> Option<Token> {
+        fn parse_keyword(s: &str, keyword: &str, token: &Token) -> Option<Token> {
             if s.starts_with(keyword) && s[keyword.len()..].starts_with(|c: char| c.is_whitespace())
             {
-                Some(token)
+                Some(token.clone())
             } else {
                 None
-            }
-        }
-
-        // Parse numeric tokens
-        if let Some(c) = s.chars().next() {
-            if c.is_ascii_digit() {
-                let number_str: String = s.chars().take_while(|ch| ch.is_ascii_digit()).collect();
-                if let Ok(number) = number_str.parse::<i64>() {
-                    return Ok(Token::Number(number));
-                }
             }
         }
 
@@ -103,8 +93,18 @@ impl FromStr for Token {
         ];
 
         for &(keyword, ref token) in &keywords {
-            if let Some(parsed_token) = parse_keyword(s, keyword, token.clone()) {
+            if let Some(parsed_token) = parse_keyword(s, keyword, token) {
                 return Ok(parsed_token);
+            }
+        }
+
+        // Parse numeric tokens
+        if let Some(c) = s.chars().next() {
+            if c.is_ascii_digit() {
+                let number_str: String = s.chars().take_while(|ch| ch.is_ascii_digit()).collect();
+                if let Ok(number) = number_str.parse::<i64>() {
+                    return Ok(Token::Number(number));
+                }
             }
         }
 
