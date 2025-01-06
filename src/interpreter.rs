@@ -1,5 +1,6 @@
 use crate::{
     parser::{Ast, BinExpr, BinOpKind, FuncCall, Variable, VariableDeclaration},
+    utils::{error, ErrorType},
     Expr,
 };
 use std::{collections::HashMap, fmt, process::exit};
@@ -60,7 +61,10 @@ impl Interpreter {
                 return s.clone();
             }
         }
-        eprintln!("Error: variable doesn't exist: {ident}");
+        error(
+            ErrorType::SyntaxError,
+            format!("Variable doesn't exist: `{ident}`"),
+        );
         exit(1); // FIXME
     }
 
@@ -72,11 +76,20 @@ impl Interpreter {
             Expr::Identifier(id) => match self.get_var(id) {
                 Variable::Number(n) => n,
                 _ => {
-                    eprintln!("Error: cannot add variable which is not a number");
+                    error(
+                        ErrorType::Generic,
+                        "Cannot add variable which is not a number",
+                    );
                     exit(1); // FIXME
                 }
             },
-            _ => todo!(),
+            _ => {
+                error(
+                    ErrorType::Generic,
+                    "Cannot add variable which is not a number",
+                );
+                exit(1); // FIXME
+            }
         }
     }
 
@@ -106,7 +119,10 @@ impl Interpreter {
                         Expr::Number(n) => print!("{n}"),
                         Expr::Identifier(id) => print!("{}", self.get_var(id)),
                         Expr::StringLiteral(s) => print!("{s}"),
-                        _ => eprintln!("Invalid argument to print"),
+                        _ => {
+                            error(ErrorType::Generic, "Invalid argument to print");
+                            exit(1); // FIXME
+                        }
                     }
                     if i != args_count - 1 {
                         print!(" ");
@@ -117,7 +133,10 @@ impl Interpreter {
             }
             _ => {
                 // TODO: handle user defined functions
-                eprintln!("Error: unknown function: {}", &func_call.name);
+                error(
+                    ErrorType::Generic,
+                    format!("Unknown function: {}", &func_call.name),
+                );
                 exit(1); // FIXME
             }
         }
@@ -133,7 +152,10 @@ impl Interpreter {
                 Expr::StringLiteral(s) => Variable::StringLiteral(s.to_owned()),
                 Expr::BinExpr(bin_expr) => Variable::Number(self.handle_bin_expr(bin_expr)),
                 _ => {
-                    eprintln!("Error: Can only store strings and numbers in variables");
+                    error(
+                        ErrorType::Generic,
+                        "Can only store strings and number in variables",
+                    );
                     exit(1); // FIXME
                 }
             },

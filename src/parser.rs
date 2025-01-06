@@ -166,7 +166,7 @@ pub fn lexer(input: &str) -> Result<Vec<Token>, String> {
                     remaining = remaining[token_length..].trim_start();
                     tokens.push(token);
                 }
-                Err(_) => return Err(format!("Unexpected token: {}", remaining)),
+                Err(_) => return Err(format!("Unexpected token: {remaining}")),
             }
         }
     }

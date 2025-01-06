@@ -2,7 +2,7 @@
 
 use crate::{
     parser::{Ast, BinExpr, FuncCall, Type, Variable, VariableDeclaration},
-    utils::{dbg, dbg_plain, get_tmp_fname, measure_time},
+    utils::{dbg, dbg_plain, error, get_tmp_fname, measure_time, ErrorType},
     Expr,
 };
 use std::{
@@ -74,7 +74,10 @@ impl Compiler {
                 return s.clone();
             }
         }
-        eprintln!("Error: variable doesn't exist: {ident}");
+        error(
+            ErrorType::Generic,
+            format!("Variable doesn't exist: `{ident}`"),
+        );
         exit(1); // FIXME
     }
 
@@ -133,7 +136,10 @@ impl Compiler {
                                 }
                             }
                         }
-                        _ => unimplemented!("Argument type is not supported"),
+                        _ => {
+                            error(ErrorType::Generic, "Argument type is not supported");
+                            exit(1); // FIXME
+                        }
                     }
                     if i != args_count - 1 {
                         self.ir.push_str("  call $printf(l $space)\n");
@@ -141,7 +147,13 @@ impl Compiler {
                 }
                 self.ir.push_str("  call $printf(l $endl)\n");
             }
-            _ => unimplemented!("Function '{}' is not implemented", func_call.name),
+            _ => {
+                error(
+                    ErrorType::Generic,
+                    format!("Function `{}` is not implemented", func_call.name),
+                );
+                exit(1); // FIXME
+            }
         }
     }
 
@@ -155,7 +167,13 @@ impl Compiler {
                 format!("%op{pk}")
             }
             Expr::BinExpr(bin_expr) => self.handle_bin_expr(bin_expr),
-            _ => unreachable!(),
+            _ => {
+                error(
+                    ErrorType::Generic,
+                    "Cannot add variable which is not a number",
+                );
+                exit(1); // FIXME
+            }
         }
     }
 
@@ -185,7 +203,10 @@ impl Compiler {
             Expr::StringLiteral(s) => {
                 if variable_declaration.typ.is_some() && variable_declaration.typ != Some(Type::Str)
                 {
-                    eprintln!("Error: Variable type 'str' but value is not a string");
+                    error(
+                        ErrorType::Generic,
+                        "Variable type `str` but value is not a string",
+                    );
                     exit(1); // FIXME
                 }
                 self.data.push_str(&format!(
@@ -203,7 +224,10 @@ impl Compiler {
                 Variable::Number(0)
             }
             _ => {
-                eprintln!("Error: Can only store strings and numbers in variables");
+                error(
+                    ErrorType::Generic,
+                    "Can only store strings and numbers in variables",
+                );
                 exit(1); // FIXME
             }
         };
@@ -224,7 +248,13 @@ impl Compiler {
                 Expr::VariableDeclaration(variable_declaration) => {
                     self.handle_var_decl(variable_declaration)
                 }
-                _ => unimplemented!("This expression type is not yet implemented"),
+                _ => {
+                    error(
+                        ErrorType::Generic,
+                        "This expression type is not yet implemented",
+                    );
+                    exit(1); // FIXME
+                }
             }
         }
 

@@ -1,4 +1,8 @@
-use crate::{compiler::Compiler, interpreter::Interpreter};
+use crate::{
+    compiler::Compiler,
+    interpreter::Interpreter,
+    utils::{error, ErrorType},
+};
 use std::{
     fs::{canonicalize, read_to_string},
     io::stdin,
@@ -6,9 +10,8 @@ use std::{
 };
 
 // TODO:
-// - good compiler errors with line numbers
+// - line numbers in errors
 // - handling errors in rust (+ make interpreter not crash on error)
-// - color error messages, general cli output
 // - if, else expr
 // - fn expr
 // - type checker
@@ -88,24 +91,48 @@ fn main() {
         }
     }
 
+    // -------------------
     // Reading source code
+    // -------------------
     let source_code = match args.input {
-        Some(input) => read_to_string(input).expect("Error: can not read source code file"),
+        Some(input) => match read_to_string(input) {
+            Ok(input) => input,
+            Err(_) => {
+                error(ErrorType::Generic, "Could not read source code file");
+                exit(1);
+            }
+        },
         None => panic!("Input argument unexpectedly None. This is a bug."),
     };
 
+    // -------------
     // Preprocessing
+    // -------------
     let source_code = measure_time("Preprocessing", || preprocess(&source_code));
 
+    // ----------------
     // Lexical Analysis
-    let tokens = measure_time("Lexical Analysis", || {
-        lexer(&source_code).expect("Lexer failed")
+    // ----------------
+    let tokens = measure_time("Lexical Analysis", || match lexer(&source_code) {
+        Ok(tokens) => tokens,
+        Err(err) => {
+            error(ErrorType::SyntaxError, err);
+            exit(1);
+        }
     });
     dbg("Tokens", &tokens);
 
+    // -------
     // Parsing
+    // -------
     let mut parser = Parser::new(&tokens);
-    let ast = measure_time("Parsing", || parser.parse().expect("Parser failed"));
+    let ast = measure_time("Parsing", || match parser.parse() {
+        Ok(ast) => ast,
+        Err(err) => {
+            error(ErrorType::Generic, err);
+            exit(1);
+        }
+    });
     dbg_pretty("AST", &ast);
 
     if args.interpreter {
