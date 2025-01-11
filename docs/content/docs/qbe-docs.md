@@ -5,37 +5,37 @@ weight: 2
 
 ## QBE Intermediate Language
 
-### [Table of Contents]{#Table-of-Contents}
+### [Table of Contents]{#table-of-contents}
 
-1.  [Basic Concepts](#Basic-Concepts)
-    -   [Input Files](#Input-Files)
-    -   [BNF Notation](#BNF-Notation)
-    -   [Sigils](#Sigils)
-    -   [Spacing](#Spacing)
-2.  [Types](#Types)
-    -   [Simple Types](#Simple-Types)
-    -   [Subtyping](#Subtyping)
-3.  [Constants and Vals](#Constants-and-Vals)
-4.  [Linkage](#Linkage)
-5.  [Definitions](#Definitions)
-    -   [Aggregate Types](#Aggregate-Types)
-    -   [Data](#Data)
-    -   [Functions](#Functions)
-6.  [Control](#Control)
-    -   [Blocks](#Blocks)
-    -   [Jumps](#Jumps)
-7.  [Instructions](#Instructions)
-    -   [Arithmetic and Bits](#Arithmetic-and-Bits)
-    -   [Memory](#Memory)
-    -   [Comparisons](#Comparisons)
-    -   [Conversions](#Conversions)
-    -   [Cast and Copy](#Cast-and-Copy)
-    -   [Call](#Call)
-    -   [Variadic](#Variadic)
-    -   [Phi](#Phi)
-8.  [Instructions Index](#Instructions-Index)
+1.  [Basic Concepts](#basic-concepts)
+    -   [Input Files](#input-files)
+    -   [BNF Notation](#bnf-notation)
+    -   [Sigils](#sigils)
+    -   [Spacing](#spacing)
+2.  [Types](#types)
+    -   [Simple Types](#simple-types)
+    -   [Subtyping](#subtyping)
+3.  [Constants and Vals](#constants-and-vals)
+4.  [Linkage](#linkage)
+5.  [Definitions](#definitions)
+    -   [Aggregate Types](#aggregate-types)
+    -   [Data](#data)
+    -   [Functions](#functions)
+6.  [Control](#control)
+    -   [Blocks](#blocks)
+    -   [Jumps](#jumps)
+7.  [Instructions](#instructions)
+    -   [Arithmetic and Bits](#arithmetic-and-bits)
+    -   [Memory](#memory)
+    -   [Comparisons](#comparisons)
+    -   [Conversions](#conversions)
+    -   [Cast and Copy](#cast-and-copy)
+    -   [Call](#call)
+    -   [Variadic](#variadic)
+    -   [Phi](#phi)
+8.  [Instructions Index](#instructions-index)
 
-### [1. Basic Concepts]{#Basic-Concepts}
+### [1. Basic Concepts]{#basic-concepts}
 
 The intermediate language (IL) is a higher-level language than the
 machine\'s assembly language. It smoothes most of the irregularities of
@@ -43,11 +43,11 @@ the underlying hardware and allows an infinite number of temporaries to
 be used. This higher abstraction level lets frontend programmers focus
 on language design issues.
 
-#### [Input Files]{#Input-Files}
+#### [Input Files]{#input-files}
 
 The intermediate language is provided to QBE as text. Usually, one file
 is generated per each compilation unit from the frontend input language.
-An IL file is a sequence of [Definitions](#Definitions) for data,
+An IL file is a sequence of [Definitions](#definitions) for data,
 functions, and types. Once processed by QBE, the resulting file can be
 assembled and linked using a standard toolchain (e.g., GNU binutils).
 
@@ -72,7 +72,7 @@ If you have read the LLVM language reference, you might recognize the
 example above. In comparison, QBE makes a much lighter use of types and
 the syntax is terser.
 
-#### [BNF Notation]{#BNF-Notation}
+#### [BNF Notation]{#bnf-notation}
 
 The language syntax is vaporously described in the sections below using
 BNF syntax. The different BNF constructs used are listed below.
@@ -85,13 +85,13 @@ BNF syntax. The different BNF constructs used are listed below.
 -   `...*` and `...+` are used for arbitrary and at-least-once
     repetition respectively.
 
-#### [Sigils]{#Sigils}
+#### [Sigils]{#sigils}
 
 The intermediate language makes heavy use of sigils, all user-defined
 names are prefixed with a sigil. This is to avoid keyword conflicts, and
 also to quickly spot the scope and nature of identifiers.
 
--   `:` is for user-defined [Aggregate Types](#Aggregate-Types)
+-   `:` is for user-defined [Aggregate Types](#aggregate-types)
 -   `$` is for globals (represented by a pointer)
 -   `%` is for function-scope temporaries
 -   `@` is for block labels
@@ -99,7 +99,7 @@ also to quickly spot the scope and nature of identifiers.
 In this BNF syntax, we use `?IDENT` to designate an identifier starting
 with the sigil `?`.
 
-#### [Spacing]{#Spacing}
+#### [Spacing]{#spacing}
 
 ``` bnf
 NL := '\n'+
@@ -111,9 +111,9 @@ In data and type definitions, newlines may also be used as spaces to
 prevent overly long lines. When exactly one of two consecutive tokens is
 a symbol (for example `,` or `=` or `{`), spacing may be omitted.
 
-### [2. Types]{#Types}
+### [2. Types]{#types}
 
-#### [Simple Types]{#Simple-Types}
+#### [Simple Types]{#simple-types}
 
 ``` bnf
 BASETY := 'w' | 'l' | 's' | 'd' # Base types
@@ -134,14 +134,14 @@ Temporaries in the IL can only have a base type.
 
 Extended types contain base types plus `b` (byte) and `h` (half word),
 respectively for 8-bit and 16-bit integers. They are used in [Aggregate
-Types](#Aggregate-Types) and [Data](#Data) definitions.
+Types](#aggregate-types) and [Data](#data) definitions.
 
 For C interfacing, the IL also provides user-defined aggregate types as
 well as signed and unsigned variants of the sub-word extended types.
-Read more about these types in the [Aggregate Types](#Aggregate-Types)
-and [Functions](#Functions) sections.
+Read more about these types in the [Aggregate Types](#aggregate-types)
+and [Functions](#functions) sections.
 
-#### [Subtyping]{#Subtyping}
+#### [Subtyping]{#subtyping}
 
 The IL has a minimal subtyping feature, for integer types only. Any
 value of type `l` can be used in a `w` context. In that case, only the
@@ -153,7 +153,7 @@ cannot be used in word context. The rationale is that a word can be
 signed or unsigned, so extending it to a long could be done in two ways,
 either by zero-extension, or by sign-extension.
 
-### [3. Constants and Vals]{#Constants-and-Vals}
+### [3. Constants and Vals]{#constants-and-vals}
 
 ``` bnf
 CONST :=
@@ -212,7 +212,7 @@ Vals are used as arguments in regular, phi, and jump instructions within
 function definitions. They are either constants or function-scope
 temporaries.
 
-### [4. Linkage]{#Linkage}
+### [4. Linkage]{#linkage}
 
 ``` bnf
 LINKAGE :=
@@ -238,7 +238,7 @@ that the object defined is stored in thread-local storage. Each time a
 runtime thread starts, the supporting platform runtime is in charge of
 making a new copy of the object for the fresh thread. Objects in
 thread-local storage must be accessed using the `thread $IDENT` syntax,
-as specified in the [Constants and Vals](#Constants-and-Vals) section.
+as specified in the [Constants and Vals](#constants-and-vals) section.
 
 A `section` flag can be specified to tell the linker to put the defined
 item in a certain section. The use of the section flag is platform
@@ -260,7 +260,7 @@ The section and export linkage flags should each appear at most once in
 a definition. If multiple occurrences are present, QBE is free to use
 any.
 
-### [5. Definitions]{#Definitions}
+### [5. Definitions]{#definitions}
 
 Definitions are the essential components of an IL file. They can define
 three types of objects: aggregate types, data, and functions. Aggregate
@@ -269,7 +269,7 @@ function definitions have file scope and are mutually recursive (even
 across IL files). Their visibility can be controlled using linkage
 flags.
 
-#### [Aggregate Types]{#Aggregate-Types}
+#### [Aggregate Types]{#aggregate-types}
 
 ``` bnf
 TYPEDEF :=
@@ -336,7 +336,7 @@ simply by enclosing their size between curly braces.
 type :opaque = align 16 { 32 }
 ```
 
-#### [Data]{#Data}
+#### [Data]{#data}
 
 ``` bnf
 DATADEF :=
@@ -355,7 +355,7 @@ DATAITEM :=
 
 Data definitions express objects that will be emitted in the compiled
 file. Their visibility and location in the compiled artifact are
-controlled with linkage flags described in the [Linkage](#Linkage)
+controlled with linkage flags described in the [Linkage](#linkage)
 section.
 
 They define a global identifier (starting with the sigil `$`), that will
@@ -393,7 +393,7 @@ data $b = { z 1000 }
 data $c = { l -1, l $c }
 ```
 
-#### [Functions]{#Functions}
+#### [Functions]{#functions}
 
 ``` bnf
 FUNCDEF :=
@@ -462,7 +462,7 @@ extended.
 If the parameter list ends with `...`, the function is a variadic
 function: it can accept a variable number of arguments. To access the
 extra arguments provided by the caller, use the `vastart` and `vaarg`
-instructions described in the [Variadic](#Variadic) section.
+instructions described in the [Variadic](#variadic) section.
 
 Optionally, the parameter list can start with an environment parameter
 `env %e`. This special parameter is a 64-bit integer temporary (i.e., of
@@ -480,7 +480,7 @@ export function w $add(env %e, w %a, w %b) {
 
 must be given the C prototype `int add(int, int)`. The intended use of
 this feature is to pass the environment pointer of closures while
-retaining a very good compatibility with C. The [Call](#Call) section
+retaining a very good compatibility with C. The [Call](#call) section
 explains how to pass an environment parameter.
 
 Since global symbols are defined mutually recursive, there is no need
@@ -490,15 +490,15 @@ previous declaration. All the type information necessary to compile a
 call is in the instruction itself.
 
 The syntax and semantics for the body of functions are described in the
-[Control](#Control) section.
+[Control](#control) section.
 
-### [6. Control]{#Control}
+### [6. Control]{#control}
 
 The IL represents programs as textual transcriptions of control flow
 graphs. The control flow is serialized as a sequence of blocks of
 straight-line code which are connected using jump instructions.
 
-#### [Blocks]{#Blocks}
+#### [Blocks]{#blocks}
 
 ``` bnf
 BLOCK :=
@@ -535,7 +535,7 @@ function $loop() {
 }
 ```
 
-#### [Jumps]{#Jumps}
+#### [Jumps]{#jumps}
 
 ``` bnf
 JUMP :=
@@ -575,10 +575,10 @@ following list.
     execution never reaches the end of the block it closes; for example,
     after having called a function such as `exit()`.
 
-### [7. Instructions]{#Instructions}
+### [7. Instructions]{#instructions}
 
 Instructions are the smallest piece of code in the IL, they form the
-body of [Blocks](#Blocks). The IL uses a three-address code, which means
+body of [Blocks](#blocks). The IL uses a three-address code, which means
 that one instruction computes an operation between two operands and
 assigns the result to a third one.
 
@@ -588,7 +588,7 @@ of the arguments can be unambiguously inferred using the instruction
 name and the return type. For example, for all arithmetic instructions,
 the type of the arguments is the same as the return type. The two
 additions below are valid if `%y` is a word or a long (because of
-[Subtyping](#Subtyping)).
+[Subtyping](#subtyping)).
 
 ```
 %x =w add 0, %y
@@ -631,7 +631,7 @@ For example, consider the type string `wl(F)`, it mentions that the
 instruction has only one argument and that if the return type used is
 long, the argument must be of type double.
 
-#### [Arithmetic and Bits]{#Arithmetic-and-Bits}
+#### [Arithmetic and Bits]{#arithmetic-and-bits}
 
 -   `add`, `sub`, `div`, `mul` \-- `T(T,T)`
 -   `neg` \-- `T(T)`
@@ -655,7 +655,7 @@ result.
 
 Bitwise OR, AND, and XOR operations are available for both integer
 types. Logical operations of typical programming languages can be
-implemented using [Comparisons](#Comparisons) and [Jumps](#Jumps).
+implemented using [Comparisons](#comparisons) and [Jumps](#jumps).
 
 Shift instructions `sar`, `shr`, and `shl`, shift right or left their
 first operand by the amount from the second operand. The shifting amount
@@ -669,7 +669,7 @@ division by a power of two for non-negative numbers. This is because the
 shift right \"truncates\" towards minus infinity, while the division
 truncates towards zero.
 
-#### [Memory]{#Memory}
+#### [Memory]{#memory}
 
 -   Store instructions.
 
@@ -752,7 +752,7 @@ storew 255, %A1      # A[1] <- 255
 %v3 =w add %v1, %v2  # %v3 is 42 here
 ```
 
-#### [Comparisons]{#Comparisons}
+#### [Comparisons]{#comparisons}
 
 Comparison instructions return an integer value (either a word or a
 long), and compare values of arbitrary types. The returned value is 1 if
@@ -798,7 +798,7 @@ point numbers and returns 1 if the two floating points are not NaNs, or
 representing signed numbers and returns 1 when the first argument is
 smaller than the second one.
 
-#### [Conversions]{#Conversions}
+#### [Conversions]{#conversions}
 
 Conversion operations change the representation of a value, possibly
 modifying it if the target type cannot hold the value of the source
@@ -839,10 +839,10 @@ integer), `swtof` (signed word to float), `uwtof` (unsigned word to
 float), `sltof` (signed long to float) and `ultof` (unsigned long to
 float).
 
-Because of [Subtyping](#Subtyping), there is no need to have an
+Because of [Subtyping](#subtyping), there is no need to have an
 instruction to lower the precision of an integer temporary.
 
-#### [Cast and Copy]{#Cast-and-Copy}
+#### [Cast and Copy]{#cast-and-copy}
 
 The `cast` and `copy` instructions return the bits of their argument
 verbatim. However a `cast` will change an integer into a floating point
@@ -862,7 +862,7 @@ the opposite of the single-precision floating point number `%f` into
 %rs =s cast %b1
 ```
 
-#### [Call]{#Call}
+#### [Call]{#call}
 
 ``` bnf
 CALL := [%IDENT '=' ABITY] 'call' VAL '(' (ARG), ')'
@@ -889,7 +889,7 @@ first-class citizens of the IL.
 
 Sub-word types are used for arguments and return values of width less
 than a word. Details on these types are presented in the
-[Functions](#Functions) section. Arguments with sub-word types need not
+[Functions](#functions) section. Arguments with sub-word types need not
 be sign or zero extended according to their type. Calls with a sub-word
 return type define a temporary of base type `w` with its most
 significant bits unspecified.
@@ -900,13 +900,13 @@ must be specified, even if it is never used afterwards.
 An environment parameter can be passed as first argument using the `env`
 keyword. The passed value must be a 64-bit integer. If the called
 function does not expect an environment parameter, it will be safely
-discarded. See the [Functions](#Functions) section for more information
+discarded. See the [Functions](#functions) section for more information
 about environment parameters.
 
 When the called function is variadic, there must be a `...` marker
 separating the named and variadic arguments.
 
-#### [Variadic]{#Variadic}
+#### [Variadic]{#variadic}
 
 The `vastart` and `vaarg` instructions provide a portable way to access
 the extra parameters of a variadic function.
@@ -956,7 +956,7 @@ function s $vadd(s %a, l %ap) {
 }
 ```
 
-#### [Phi]{#Phi}
+#### [Phi]{#phi}
 
 ``` bnf
 PHI := %IDENT '=' BASETY 'phi' ( @IDENT VAL ),
@@ -965,7 +965,7 @@ PHI := %IDENT '=' BASETY 'phi' ( @IDENT VAL ),
 First and foremost, phi instructions are NOT necessary when writing a
 frontend to QBE. One solution to avoid having to deal with SSA form is
 to use stack allocated variables for all source program variables and
-perform assignments and lookups using [Memory](#Memory) operations. This
+perform assignments and lookups using [Memory](#memory) operations. This
 is what LLVM users typically do.
 
 Another solution is to simply emit code that is not in SSA form!
@@ -1028,9 +1028,9 @@ variable is defined by a phi it respects all the SSA invariants. So it
 is critical to not use phi instructions unless you know exactly what you
 are doing.
 
-### [8. Instructions Index]{#Instructions-Index}
+### [8. Instructions Index]{#instructions-index}
 
--   [Arithmetic and Bits](#Arithmetic-and-Bits):
+-   [Arithmetic and Bits](#arithmetic-and-bits):
 
     -   `add`
     -   `and`
@@ -1047,7 +1047,7 @@ are doing.
     -   `urem`
     -   `xor`
 
--   [Memory](#Memory):
+-   [Memory](#memory):
 
     -   `alloc16`
     -   `alloc4`
@@ -1070,7 +1070,7 @@ are doing.
     -   `stores`
     -   `storew`
 
--   [Comparisons](#Comparisons):
+-   [Comparisons](#comparisons):
 
     -   `ceqd`
     -   `ceql`
@@ -1109,7 +1109,7 @@ are doing.
     -   `cuod`
     -   `cuos`
 
--   [Conversions](#Conversions):
+-   [Conversions](#conversions):
 
     -   `dtosi`
     -   `dtoui`
@@ -1128,25 +1128,25 @@ are doing.
     -   `uwtof`
     -   `truncd`
 
--   [Cast and Copy](#Cast-and-Copy) :
+-   [Cast and Copy](#cast-and-copy) :
 
     -   `cast`
     -   `copy`
 
--   [Call](#Call):
+-   [Call](#call):
 
     -   `call`
 
--   [Variadic](#Variadic):
+-   [Variadic](#variadic):
 
     -   `vastart`
     -   `vaarg`
 
--   [Phi](#Phi):
+-   [Phi](#phi):
 
     -   `phi`
 
--   [Jumps](#Jumps):
+-   [Jumps](#jumps):
 
     -   `hlt`
     -   `jmp`
