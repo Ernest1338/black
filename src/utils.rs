@@ -160,3 +160,15 @@ pub fn display_error(err: ErrorType) {
         }
     };
 }
+
+/// Display error to the user in a pretty way
+pub fn display_error_stdout(err: ErrorType) {
+    match err {
+        ErrorType::SyntaxError(s) => {
+            println!("{} {s}", color("[Syntax Error]", Color::LightRed))
+        }
+        ErrorType::Generic(s) => {
+            println!("{} {s}", color("[Error]", Color::LightRed))
+        }
+    };
+}

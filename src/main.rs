@@ -1,7 +1,7 @@
 use crate::{
     compiler::Compiler,
     interpreter::Interpreter,
-    utils::{color, display_error, Color, ErrorType},
+    utils::{color, display_error, display_error_stdout, Color, ErrorType},
 };
 use std::{
     fs::{canonicalize, read_to_string},
@@ -79,9 +79,21 @@ fn main() {
             input = input.trim().to_string();
 
             let code = preprocess(&input);
-            let tokens = lexer(&code).expect("Lexer failed");
+            let tokens = match lexer(&code) {
+                Ok(tokens) => tokens,
+                Err(err) => {
+                    display_error_stdout(ErrorType::Generic(err));
+                    continue;
+                }
+            };
             let mut parser = Parser::new(&tokens);
-            let ast = parser.parse().expect("Parser failed");
+            let ast = match parser.parse() {
+                Ok(ast) => ast,
+                Err(err) => {
+                    display_error_stdout(ErrorType::Generic(err));
+                    continue;
+                }
+            };
             interpreter.ast = ast;
 
             // Clear last line
@@ -89,14 +101,7 @@ fn main() {
 
             let res = interpreter.run();
             if let Err(err) = res {
-                match err {
-                    ErrorType::SyntaxError(s) => {
-                        println!("{} {s}", color("[Syntax Error]", Color::LightRed))
-                    }
-                    ErrorType::Generic(s) => {
-                        println!("{} {s}", color("[Error]", Color::LightRed))
-                    }
-                };
+                display_error_stdout(err);
             }
         }
     }

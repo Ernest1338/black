@@ -49,7 +49,7 @@ impl Interpreter {
                 Expr::VariableDeclaration(variable_declaration) => {
                     self.handle_var_decl(variable_declaration)?
                 }
-                _ => todo!(),
+                _ => return Err(ErrorType::Generic(format!("Not implemented: {node:?}"))),
             }
         }
 
@@ -147,10 +147,9 @@ impl Interpreter {
                 Expr::StringLiteral(s) => Variable::StringLiteral(s.to_owned()),
                 Expr::BinExpr(bin_expr) => Variable::Number(self.handle_bin_expr(bin_expr)?),
                 _ => {
-                    display_error(ErrorType::Generic(
+                    return Err(ErrorType::Generic(
                         "Can only store strings and number in variables".to_string(),
                     ));
-                    exit(1); // FIXME
                 }
             },
         );
