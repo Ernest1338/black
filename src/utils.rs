@@ -143,19 +143,20 @@ pub fn measure_time<T, F: FnOnce() -> T>(label: &str, f: F) -> T {
     }
 }
 
+#[derive(Debug)]
 pub enum ErrorType {
-    SyntaxError,
-    Generic,
+    SyntaxError(String),
+    Generic(String),
 }
 
 /// Display error to the user in a pretty way
-pub fn error(typ: ErrorType, message: impl Display) {
-    match typ {
-        ErrorType::SyntaxError => {
-            eprintln!("{} {message}", color("[Syntax Error]", Color::LightRed))
+pub fn display_error(err: ErrorType) {
+    match err {
+        ErrorType::SyntaxError(s) => {
+            eprintln!("{} {s}", color("[Syntax Error]", Color::LightRed))
         }
-        ErrorType::Generic => {
-            eprintln!("{} {message}", color("[Error]", Color::LightRed))
+        ErrorType::Generic(s) => {
+            eprintln!("{} {s}", color("[Error]", Color::LightRed))
         }
     };
 }

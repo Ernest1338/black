@@ -1,7 +1,7 @@
 use crate::{
     compiler::Compiler,
     interpreter::Interpreter,
-    utils::{error, ErrorType},
+    utils::{color, display_error, Color, ErrorType},
 };
 use std::{
     fs::{canonicalize, read_to_string},
@@ -11,7 +11,6 @@ use std::{
 
 // TODO:
 // - line numbers in errors
-// - handling errors in rust (+ make interpreter not crash on error)
 // - if, else expr
 // - fn expr
 // - type checker
@@ -87,7 +86,17 @@ fn main() {
             // Clear last line
             print!("\x1b[1A\x1b[2K");
 
-            interpreter.run();
+            let res = interpreter.run();
+            if let Err(err) = res {
+                match err {
+                    ErrorType::SyntaxError(s) => {
+                        println!("{} {s}", color("[Syntax Error]", Color::LightRed))
+                    }
+                    ErrorType::Generic(s) => {
+                        println!("{} {s}", color("[Error]", Color::LightRed))
+                    }
+                };
+            }
         }
     }
 
@@ -98,7 +107,9 @@ fn main() {
         Some(input) => match read_to_string(input) {
             Ok(input) => input,
             Err(_) => {
-                error(ErrorType::Generic, "Could not read source code file");
+                display_error(ErrorType::Generic(
+                    "Could not read source code file".to_string(),
+                ));
                 exit(1);
             }
         },
@@ -116,7 +127,7 @@ fn main() {
     let tokens = measure_time("Lexical Analysis", || match lexer(&source_code) {
         Ok(tokens) => tokens,
         Err(err) => {
-            error(ErrorType::SyntaxError, err);
+            display_error(ErrorType::SyntaxError(err));
             exit(1);
         }
     });
@@ -129,7 +140,7 @@ fn main() {
     let ast = measure_time("Parsing", || match parser.parse() {
         Ok(ast) => ast,
         Err(err) => {
-            error(ErrorType::Generic, err);
+            display_error(ErrorType::Generic(err));
             exit(1);
         }
     });
@@ -140,14 +151,22 @@ fn main() {
         // Interpreter
         // -----------
         let mut interpreter = Interpreter::from_ast(ast);
-        measure_time("Interpreter Execution", || interpreter.run());
+        measure_time("Interpreter Execution", || {
+            if let Err(err) = interpreter.run() {
+                display_error(err);
+                exit(1);
+            }
+        });
     } else if args.build_and_run {
         // ---------------
         // Compile and run
         // ---------------
         let mut compiler = Compiler::from_ast(ast);
         measure_time("Full Compiler Execution", || {
-            compiler.compile(args.output.clone())
+            if let Err(err) = compiler.compile(args.output.clone()) {
+                display_error(err);
+                exit(1);
+            }
         });
         let absolute_path =
             canonicalize(args.output).expect("Error: Failed to get binary absolute path");
@@ -164,6 +183,11 @@ fn main() {
         // Compiler
         // --------
         let mut compiler = Compiler::from_ast(ast);
-        measure_time("Full Compiler Execution", || compiler.compile(args.output));
+        measure_time("Full Compiler Execution", || {
+            if let Err(err) = compiler.compile(args.output) {
+                display_error(err);
+                exit(1);
+            }
+        });
     }
 }
