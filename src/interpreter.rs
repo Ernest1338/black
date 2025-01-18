@@ -49,6 +49,13 @@ impl Interpreter {
                 Expr::VariableDeclaration(variable_declaration) => {
                     self.handle_var_decl(variable_declaration)?
                 }
+                Expr::Identifier(id) => {
+                    // If it's a valid variable, print it
+                    // Probably only useful in the interactive mode
+                    // Should we only restrict this code to such condition?
+                    let var = self.get_var(id)?;
+                    println!("{var}");
+                }
                 _ => return Err(ErrorType::Generic(format!("Not implemented: {node:?}"))),
             }
         }
