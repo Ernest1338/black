@@ -10,6 +10,7 @@ use std::{
 };
 
 // TODO:
+// - tests that check if correct errors were returned
 // - line numbers in errors
 // - if, else expr
 // - fn expr
