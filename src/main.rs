@@ -1,7 +1,7 @@
 use crate::{
     compiler::Compiler,
     interpreter::Interpreter,
-    utils::{color, display_error, display_error_stdout, Color, ErrorType},
+    utils::{display_error, display_error_stdout, ErrorType},
 };
 use std::{
     fs::{canonicalize, read_to_string},

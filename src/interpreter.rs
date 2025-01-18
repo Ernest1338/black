@@ -1,9 +1,9 @@
 use crate::{
     parser::{Ast, BinExpr, BinOpKind, FuncCall, Variable, VariableDeclaration},
-    utils::{display_error, ErrorType},
+    utils::ErrorType,
     Expr,
 };
-use std::{collections::HashMap, fmt, process::exit};
+use std::{collections::HashMap, fmt};
 
 /// Implements the `Display` trait for the `Variable` enum, allowing formatted output for eg.
 /// numbers and string literals
