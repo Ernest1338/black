@@ -144,6 +144,8 @@ impl Compiler {
                     return Err(ErrorType::Generic("Invalid argument to print".to_string()));
                 }
             }
+
+            // Add space between arguments if not the last one
             if i != args_count - 1 {
                 self.ir.push_str("  call $printf(l $space)\n");
             }

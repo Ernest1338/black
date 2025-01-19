@@ -271,7 +271,7 @@ print(a)
     let expected = "1\n2";
     assert!(interpret(code) == expected);
     // FIXME
-    // assert!(compile(code) == expected);
+    // assert!(compile_and_run(code) == expected);
 }
 
 #[test]
@@ -318,7 +318,7 @@ print(a, b)
 // "#;
 //     let expected = "1\n2";
 //     assert!(interpret(code) == expected);
-//     assert!(compile(code) == expected);
+//     assert!(compile_and_run(code) == expected);
 // }
 
 #[test]
@@ -339,15 +339,14 @@ fn cli_version() {
     assert!(stdout.contains("version"));
 }
 
-// NOTE: already covered by some previous tests
-// #[test]
-// fn cli_interpreter() {
-//     let out = run_compiler(vec!["-i", "TMP"]);
-//     let stdout = get_stdout(&out);
-//
-//     assert!(out.status.success());
-//     assert!(stdout == "Hello, World!");
-// }
+#[test]
+fn cli_interpreter() {
+    let out = run_compiler(vec!["-i", "TMP"]);
+    let stdout = get_stdout(&out);
+
+    assert!(out.status.success());
+    assert!(stdout == "Hello, World!");
+}
 
 #[test]
 fn args_interpreter() {
