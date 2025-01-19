@@ -56,7 +56,11 @@ impl Interpreter {
                     let var = self.get_var(id)?;
                     println!("{var}");
                 }
-                _ => return Err(ErrorType::Generic(format!("Not implemented: {node:?}"))),
+                _ => {
+                    return Err(ErrorType::Generic(format!(
+                        "Expression `{node:?}` in this context is not yet implemented"
+                    )))
+                }
             }
         }
 
@@ -108,35 +112,38 @@ impl Interpreter {
     /// Handles function calls
     fn handle_func_call(&self, func_call: &FuncCall) -> Result<(), ErrorType> {
         match func_call.name.as_ref() {
-            "print" => {
-                let args = func_call.arguments.iter();
-                let args_count = args.len();
-                for (i, arg) in args.enumerate() {
-                    match arg {
-                        Expr::FuncCall(func_call) => self.handle_func_call(func_call)?,
-                        Expr::BinExpr(bin_expr) => print!("{}", self.handle_bin_expr(bin_expr)?),
-                        Expr::Number(n) => print!("{n}"),
-                        Expr::Identifier(id) => print!("{}", self.get_var(id)?),
-                        Expr::StringLiteral(s) => print!("{s}"),
-                        _ => {
-                            return Err(ErrorType::Generic("Invalid argument to print".to_string()))
-                        }
-                    }
-                    if i != args_count - 1 {
-                        print!(" ");
-                    }
-                }
-
-                println!();
-            }
+            "print" => self.handle_print(func_call)?,
             _ => {
                 // TODO: handle user defined functions
                 return Err(ErrorType::Generic(format!(
-                    "Unknown function: {}",
+                    "Function `{}` is not implemented",
                     &func_call.name
                 )));
             }
         }
+
+        Ok(())
+    }
+
+    /// Handles the `print` function call
+    fn handle_print(&self, func_call: &FuncCall) -> Result<(), ErrorType> {
+        let args = func_call.arguments.iter();
+        let args_count = args.len();
+        for (i, arg) in args.enumerate() {
+            match arg {
+                Expr::FuncCall(func_call) => self.handle_func_call(func_call)?,
+                Expr::BinExpr(bin_expr) => print!("{}", self.handle_bin_expr(bin_expr)?),
+                Expr::Number(n) => print!("{n}"),
+                Expr::Identifier(id) => print!("{}", self.get_var(id)?),
+                Expr::StringLiteral(s) => print!("{s}"),
+                _ => return Err(ErrorType::Generic("Invalid argument to print".to_string())),
+            }
+            if i != args_count - 1 {
+                print!(" ");
+            }
+        }
+
+        println!();
 
         Ok(())
     }

@@ -3,6 +3,7 @@
 use crate::{
     args::{get_args, AppArgs},
     compiler::Compiler,
+    interpreter::Interpreter,
     parser::{lexer, preprocess, Parser},
     utils::{get_tmp_fname, ErrorType},
 };
@@ -133,6 +134,36 @@ fn get_compiler_res(code: &str) -> Result<(), ErrorType> {
     let bin_fname = get_tmp_fname("blkbin");
 
     compiler.compile(bin_fname.into())
+}
+
+fn get_interpreter_res(code: &str) -> Result<(), ErrorType> {
+    // Preprocessor
+    let code = preprocess(code);
+
+    // Lexer
+    let tokens = match lexer(&code) {
+        Ok(tokens) => tokens,
+        Err(_) => unreachable!(),
+    };
+
+    // Parser
+    let mut parser = Parser::new(&tokens);
+    let ast = match parser.parse() {
+        Ok(ast) => ast,
+        Err(_) => unreachable!(),
+    };
+
+    // Interpreter
+    let mut interpreter = Interpreter::from_ast(ast);
+
+    interpreter.run()
+}
+
+fn assert_error(result: Result<(), ErrorType>, expected: &ErrorType) {
+    match result {
+        Err(err) => assert!(err == *expected),
+        Ok(_) => panic!("Expected an error, but got Ok"),
+    }
 }
 
 #[test]
@@ -405,10 +436,8 @@ fn err_unknown_func() {
     let code = r#"prnt("test")"#;
     let expected = ErrorType::Generic("Function `prnt` is not implemented".to_string());
 
-    match get_compiler_res(code) {
-        Err(err) => assert!(err == expected),
-        Ok(_) => panic!("Expected an error, but got Ok"),
-    }
+    assert_error(get_compiler_res(code), &expected);
+    assert_error(get_interpreter_res(code), &expected);
 }
 
 #[test]
@@ -416,10 +445,8 @@ fn err_variable_doesnt_exist() {
     let code = r#"print(a)"#;
     let expected = ErrorType::SyntaxError("Variable doesn't exist: `a`".to_string());
 
-    match get_compiler_res(code) {
-        Err(err) => assert!(err == expected),
-        Ok(_) => panic!("Expected an error, but got Ok"),
-    }
+    assert_error(get_compiler_res(code), &expected);
+    assert_error(get_interpreter_res(code), &expected);
 }
 
 #[test]
@@ -427,10 +454,8 @@ fn err_invalid_print_arg() {
     let code = r#"print(let a = 2)"#;
     let expected = ErrorType::Generic("Invalid argument to print".to_string());
 
-    match get_compiler_res(code) {
-        Err(err) => assert!(err == expected),
-        Ok(_) => panic!("Expected an error, but got Ok"),
-    }
+    assert_error(get_compiler_res(code), &expected);
+    assert_error(get_interpreter_res(code), &expected);
 }
 
 #[test]
@@ -438,21 +463,19 @@ fn err_add_not_num() {
     let code = r#"print(1+"")"#;
     let expected = ErrorType::Generic("Cannot add variable which is not a number".to_string());
 
-    match get_compiler_res(code) {
-        Err(err) => assert!(err == expected),
-        Ok(_) => panic!("Expected an error, but got Ok"),
-    }
+    assert_error(get_compiler_res(code), &expected);
+    assert_error(get_interpreter_res(code), &expected);
 }
 
 #[test]
 fn err_invalid_expr_type() {
     let code = r#"1"#;
-    let expected = ErrorType::Generic("This expression type is not yet implemented".to_string());
+    let expected = ErrorType::Generic(
+        "Expression `Number(1)` in this context is not yet implemented".to_string(),
+    );
 
-    match get_compiler_res(code) {
-        Err(err) => assert!(err == expected),
-        Ok(_) => panic!("Expected an error, but got Ok"),
-    }
+    assert_error(get_compiler_res(code), &expected);
+    assert_error(get_interpreter_res(code), &expected);
 }
 
 #[test]
@@ -460,8 +483,7 @@ fn err_var_type_str_but_not_str() {
     let code = r#"let str a = 1"#;
     let expected = ErrorType::Generic("Variable type `str` does not match value type".to_string());
 
-    match get_compiler_res(code) {
-        Err(err) => assert!(err == expected),
-        Ok(_) => panic!("Expected an error, but got Ok"),
-    }
+    assert_error(get_compiler_res(code), &expected);
+    // FIXME
+    // assert_error(get_interpreter_res(code), &expected);
 }

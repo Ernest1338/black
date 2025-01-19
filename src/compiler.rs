@@ -281,7 +281,7 @@ impl Compiler {
 
                 _ => {
                     return Err(ErrorType::Generic(
-                        "This expression type is not yet implemented".to_string(),
+                        format!("Expression `{node:?}` in this context is not yet implemented"),
                     ));
                 }
             }
