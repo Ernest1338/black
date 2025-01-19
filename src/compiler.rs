@@ -67,21 +67,15 @@ impl Compiler {
     }
 
     /// Retrieves a variable by its identifier, returning it or exiting with an error if not found
-    #[allow(dead_code)]
     fn get_var(&self, ident: &str) -> Result<Variable, ErrorType> {
-        if self.variables.contains_key(ident) {
-            if let Some(s) = self.variables.get(ident) {
-                return Ok(s.clone());
-            }
-        }
-
-        Err(ErrorType::SyntaxError(format!(
-            "Variable doesn't exist: `{ident}`"
-        )))
+        self.variables
+            .get(ident)
+            .cloned()
+            .ok_or_else(|| ErrorType::SyntaxError(format!("Variable doesn't exist: `{}`", ident)))
     }
 
     /// Increments and returns the primary key, used for generating unique variable labels
-    fn get_pk(&mut self) -> usize {
+    fn next_pk(&mut self) -> usize {
         self.pk += 1;
         self.pk
     }
@@ -91,66 +85,10 @@ impl Compiler {
         self.pk += 1;
     }
 
-    /// Handles a function call
+    /// Handles a function call by dispatching to the appropriate handler
     fn handle_func_call(&mut self, func_call: &FuncCall) -> Result<(), ErrorType> {
         match func_call.name.as_ref() {
-            "print" => {
-                let args = func_call.arguments.iter();
-                let args_count = args.len();
-                for (i, arg) in args.enumerate() {
-                    let pk = self.get_pk();
-
-                    match arg {
-                        Expr::StringLiteral(message) => {
-                            let escaped = escape_string(message);
-                            self.data
-                                .push_str(&format!("data $v{pk} = {{ b \"{escaped}\", b 0 }}\n"));
-                            self.ir.push_str(&format!("  call $printf(l $v{pk})\n"));
-                        }
-
-                        Expr::Number(num) => {
-                            let escaped = escape_string(&num.to_string());
-                            self.data
-                                .push_str(&format!("data $v{pk} = {{ b \"{escaped}\", b 0 }}\n"));
-                            self.ir.push_str(&format!("  call $printf(l $v{pk})\n"));
-                        }
-
-                        Expr::BinExpr(bin_expr) => {
-                            let res_var = self.handle_bin_expr(bin_expr)?;
-                            self.ir
-                                .push_str(&format!("  call $printf(l $fmt_int, w {res_var})\n"));
-                        }
-
-                        Expr::Identifier(id) => {
-                            let var = self.get_var(id)?;
-                            match var {
-                                Variable::Number(_) => {
-                                    // NOTE: here we could grab the number, save it to data section
-                                    // as a string and print it using puts instead
-                                    self.ir.push_str(&format!("  %v{pk} =w loadw ${id}\n"));
-                                    self.ir.push_str(&format!(
-                                        "  call $printf(l $fmt_int, w %v{pk})\n"
-                                    ));
-                                }
-                                Variable::StringLiteral(_) => {
-                                    self.ir.push_str(&format!("  call $printf(l ${id})\n"))
-                                }
-                            }
-                        }
-
-                        _ => {
-                            return Err(ErrorType::Generic(
-                                "Invalid argument to print".to_string(),
-                            ));
-                        }
-                    }
-                    if i != args_count - 1 {
-                        self.ir.push_str("  call $printf(l $space)\n");
-                    }
-                }
-                self.ir.push_str("  call $printf(l $endl)\n");
-            }
-
+            "print" => self.handle_print(func_call)?,
             _ => {
                 return Err(ErrorType::Generic(format!(
                     "Function `{}` is not implemented",
@@ -162,9 +100,66 @@ impl Compiler {
         Ok(())
     }
 
+    fn handle_print(&mut self, func_call: &FuncCall) -> Result<(), ErrorType> {
+        let args = func_call.arguments.iter();
+        let args_count = args.len();
+        for (i, arg) in args.enumerate() {
+            let pk = self.next_pk();
+
+            match arg {
+                Expr::StringLiteral(message) => {
+                    let escaped = escape_string(message);
+                    self.data
+                        .push_str(&format!("data $v{pk} = {{ b \"{escaped}\", b 0 }}\n"));
+                    self.ir.push_str(&format!("  call $printf(l $v{pk})\n"));
+                }
+
+                Expr::Number(num) => {
+                    let escaped = escape_string(&num.to_string());
+                    self.data
+                        .push_str(&format!("data $v{pk} = {{ b \"{escaped}\", b 0 }}\n"));
+                    self.ir.push_str(&format!("  call $printf(l $v{pk})\n"));
+                }
+
+                Expr::BinExpr(bin_expr) => {
+                    let res_var = self.handle_bin_expr(bin_expr)?;
+                    self.ir
+                        .push_str(&format!("  call $printf(l $fmt_int, w {res_var})\n"));
+                }
+
+                Expr::Identifier(id) => {
+                    let var = self.get_var(id)?;
+                    match var {
+                        Variable::Number(_) => {
+                            // NOTE: here we could grab the number, save it to data section
+                            // as a string and print it using puts instead
+                            self.ir.push_str(&format!("  %v{pk} =w loadw ${id}\n"));
+                            self.ir
+                                .push_str(&format!("  call $printf(l $fmt_int, w %v{pk})\n"));
+                        }
+                        Variable::StringLiteral(_) => {
+                            self.ir.push_str(&format!("  call $printf(l ${id})\n"))
+                        }
+                    }
+                }
+
+                _ => {
+                    return Err(ErrorType::Generic("Invalid argument to print".to_string()));
+                }
+            }
+            if i != args_count - 1 {
+                self.ir.push_str("  call $printf(l $space)\n");
+            }
+        }
+
+        self.ir.push_str("  call $printf(l $endl)\n");
+
+        Ok(())
+    }
+
     /// Evaluates an operand expression and returns its result temporary variable
     fn eval_operand(&mut self, operand: &Expr) -> Result<String, ErrorType> {
-        let pk = self.get_pk();
+        let pk = self.next_pk();
         match operand {
             Expr::Number(n) => Ok(n.to_string()),
 
@@ -186,7 +181,7 @@ impl Compiler {
     fn handle_bin_expr(&mut self, bin_expr: &BinExpr) -> Result<String, ErrorType> {
         let lhs = self.eval_operand(&bin_expr.lhs)?;
         let rhs = self.eval_operand(&bin_expr.rhs)?;
-        let pk = self.get_pk();
+        let pk = self.next_pk();
 
         self.ir.push_str(&format!(
             "  %v{pk} =w {} {lhs}, {rhs}\n",
