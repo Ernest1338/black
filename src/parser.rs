@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use std::{iter::Peekable, str::FromStr};
+use std::{fmt, iter::Peekable, str::FromStr};
 
 /// Represents different token types for the lexer
 #[derive(Debug, PartialEq, Clone)]
@@ -39,6 +39,20 @@ pub enum Type {
     Double,
     Str,
     None,
+}
+
+impl fmt::Display for Type {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let type_str = match self {
+            Type::Int => "int",
+            Type::Long => "long",
+            Type::Float => "float",
+            Type::Double => "double",
+            Type::Str => "str",
+            Type::None => "none",
+        };
+        write!(f, "{}", type_str)
+    }
 }
 
 impl Token {

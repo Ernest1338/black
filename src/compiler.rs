@@ -74,6 +74,7 @@ impl Compiler {
                 return Ok(s.clone());
             }
         }
+
         Err(ErrorType::SyntaxError(format!(
             "Variable doesn't exist: `{ident}`"
         )))
@@ -106,6 +107,7 @@ impl Compiler {
                                 .push_str(&format!("data $v{pk} = {{ b \"{escaped}\", b 0 }}\n"));
                             self.ir.push_str(&format!("  call $printf(l $v{pk})\n"));
                         }
+
                         Expr::Number(num) => {
                             let escaped =
                                 num.to_string().replace("\\", "\\\\").replace("\"", "\\\"");
@@ -113,11 +115,13 @@ impl Compiler {
                                 .push_str(&format!("data $v{pk} = {{ b \"{escaped}\", b 0 }}\n"));
                             self.ir.push_str(&format!("  call $printf(l $v{pk})\n"));
                         }
+
                         Expr::BinExpr(bin_expr) => {
                             let res_var = self.handle_bin_expr(bin_expr)?;
                             self.ir
                                 .push_str(&format!("  call $printf(l $fmt_int, w {res_var})\n"));
                         }
+
                         Expr::Identifier(id) => {
                             let var = self.get_var(id)?;
                             match var {
@@ -134,9 +138,10 @@ impl Compiler {
                                 }
                             }
                         }
+
                         _ => {
                             return Err(ErrorType::Generic(
-                                "Argument type is not supported".to_string(),
+                                "Invalid argument to print".to_string(),
                             ));
                         }
                     }
@@ -146,6 +151,7 @@ impl Compiler {
                 }
                 self.ir.push_str("  call $printf(l $endl)\n");
             }
+
             _ => {
                 return Err(ErrorType::Generic(format!(
                     "Function `{}` is not implemented",
@@ -162,11 +168,14 @@ impl Compiler {
         let pk = self.get_pk();
         match operand {
             Expr::Number(n) => Ok(n.to_string()),
+
             Expr::Identifier(id) => {
                 self.ir.push_str(&format!("  %op{pk} =w loadw ${id}\n"));
                 Ok(format!("%op{pk}"))
             }
+
             Expr::BinExpr(bin_expr) => self.handle_bin_expr(bin_expr),
+
             _ => Err(ErrorType::Generic(
                 "Cannot add variable which is not a number".to_string(),
             )),
@@ -179,11 +188,23 @@ impl Compiler {
         let lhs = self.eval_operand(&bin_expr.lhs)?;
         let rhs = self.eval_operand(&bin_expr.rhs)?;
         let pk = self.get_pk();
+
         self.ir.push_str(&format!(
             "  %v{pk} =w {} {lhs}, {rhs}\n",
             bin_expr.kind.to_str()
         ));
+
         Ok(format!("%v{pk}"))
+    }
+
+    fn is_valid_type(&self, var_type: &Type, value: &Expr) -> bool {
+        matches!(
+            (var_type, value),
+            (Type::Str, Expr::StringLiteral(_))
+                | (Type::Int, Expr::Number(_) | Expr::BinExpr(_))
+                | (Type::Float, Expr::Number(_) | Expr::BinExpr(_))
+                | (Type::Double, Expr::Number(_) | Expr::BinExpr(_))
+        )
     }
 
     /// Handles a variable declaration, storing the variable in the `variables` map and generating
@@ -193,41 +214,50 @@ impl Compiler {
         variable_declaration: &VariableDeclaration,
     ) -> Result<(), ErrorType> {
         let var_label = format!("${}", variable_declaration.identifier);
+
+        if let Some(var_type) = &variable_declaration.typ {
+            if !self.is_valid_type(var_type, &variable_declaration.value) {
+                return Err(ErrorType::Generic(format!(
+                    "Variable type `{var_type}` does not match value type",
+                )));
+            }
+        }
+
         let value = match &variable_declaration.value {
             Expr::Number(n) => {
                 self.data
                     .push_str(&format!("data {var_label} = {{ w {} }}\n", *n));
+
                 Variable::Number(*n)
             }
+
             Expr::StringLiteral(s) => {
-                if variable_declaration.typ.is_some() && variable_declaration.typ != Some(Type::Str)
-                {
-                    return Err(ErrorType::Generic(
-                        "Variable type `str` but value is not a string".to_string(),
-                    ));
-                }
                 self.data.push_str(&format!(
                     "data {var_label} = {{ b \"{}\", b 0 }}\n",
                     Variable::StringLiteral(s.to_owned())
                 ));
+
                 Variable::StringLiteral(s.to_owned())
             }
+
             Expr::BinExpr(bin_expr) => {
                 let res_var = self.handle_bin_expr(bin_expr)?;
                 self.data
                     .push_str(&format!("data {var_label} = {{ w 0 }}\n"));
                 self.ir
                     .push_str(&format!("  storew {res_var}, {var_label}\n"));
+
                 Variable::Number(0)
             }
+
             _ => {
                 return Err(ErrorType::Generic(
                     "Can only store strings and numbers in variables".to_string(),
                 ));
             }
         };
-        let id = variable_declaration.identifier.clone();
 
+        let id = variable_declaration.identifier.clone();
         self.variables.insert(id, value);
 
         Ok(())
@@ -242,9 +272,11 @@ impl Compiler {
         for node in &ast {
             match node {
                 Expr::FuncCall(func_call) => self.handle_func_call(func_call)?,
+
                 Expr::VariableDeclaration(variable_declaration) => {
                     self.handle_var_decl(variable_declaration)?
                 }
+
                 _ => {
                     return Err(ErrorType::Generic(
                         "This expression type is not yet implemented".to_string(),

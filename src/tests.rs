@@ -2,7 +2,9 @@
 
 use crate::{
     args::{get_args, AppArgs},
-    utils::get_tmp_fname,
+    compiler::Compiler,
+    parser::{lexer, preprocess, Parser},
+    utils::{get_tmp_fname, ErrorType},
 };
 use std::{
     fs::{remove_file, OpenOptions},
@@ -11,7 +13,7 @@ use std::{
     process::{Command, Output},
 };
 
-fn compile(code: &str) -> String {
+fn compile_and_run(code: &str) -> String {
     let code_fname = get_tmp_fname("blkcode");
     let bin_fname = get_tmp_fname("blkbin");
 
@@ -109,12 +111,36 @@ fn args(args: &[&str]) -> Vec<String> {
     args.iter().map(|e| e.to_string()).collect()
 }
 
+fn get_compiler_res(code: &str) -> Result<(), ErrorType> {
+    // Preprocessor
+    let code = preprocess(code);
+
+    // Lexer
+    let tokens = match lexer(&code) {
+        Ok(tokens) => tokens,
+        Err(_) => unreachable!(),
+    };
+
+    // Parser
+    let mut parser = Parser::new(&tokens);
+    let ast = match parser.parse() {
+        Ok(ast) => ast,
+        Err(_) => unreachable!(),
+    };
+
+    // Compiler
+    let mut compiler = Compiler::from_ast(ast);
+    let bin_fname = get_tmp_fname("blkbin");
+
+    compiler.compile(bin_fname.into())
+}
+
 #[test]
 fn print_str() {
     let code = r#"print("hello")"#;
     let expected = "hello";
     assert!(interpret(code) == expected);
-    assert!(compile(code) == expected);
+    assert!(compile_and_run(code) == expected);
 }
 
 #[test]
@@ -122,7 +148,7 @@ fn print_int() {
     let code = r#"print(1)"#;
     let expected = "1";
     assert!(interpret(code) == expected);
-    assert!(compile(code) == expected);
+    assert!(compile_and_run(code) == expected);
 }
 
 #[test]
@@ -133,7 +159,7 @@ print(a)
 "#;
     let expected = "hello";
     assert!(interpret(code) == expected);
-    assert!(compile(code) == expected);
+    assert!(compile_and_run(code) == expected);
 }
 
 #[test]
@@ -144,7 +170,7 @@ print(a)
 "#;
     let expected = "1";
     assert!(interpret(code) == expected);
-    assert!(compile(code) == expected);
+    assert!(compile_and_run(code) == expected);
 }
 
 #[test]
@@ -152,7 +178,7 @@ fn print_multiple_args() {
     let code = r#"print("hello", 1)"#;
     let expected = "hello 1";
     assert!(interpret(code) == expected);
-    assert!(compile(code) == expected);
+    assert!(compile_and_run(code) == expected);
 }
 
 #[test]
@@ -162,7 +188,7 @@ print(1+1)
 "#;
     let expected = "2";
     assert!(interpret(code) == expected);
-    assert!(compile(code) == expected);
+    assert!(compile_and_run(code) == expected);
 }
 
 #[test]
@@ -172,7 +198,7 @@ print(1*2+3)
 "#;
     let expected = "5";
     assert!(interpret(code) == expected);
-    assert!(compile(code) == expected);
+    assert!(compile_and_run(code) == expected);
 }
 
 #[test]
@@ -184,7 +210,7 @@ print(1*b/2, a/b, a+b)
 "#;
     let expected = "8 0 24";
     assert!(interpret(code) == expected);
-    assert!(compile(code) == expected);
+    assert!(compile_and_run(code) == expected);
 }
 
 #[test]
@@ -196,7 +222,7 @@ print(a+b)
 "#;
     let expected = "2";
     assert!(interpret(code) == expected);
-    assert!(compile(code) == expected);
+    assert!(compile_and_run(code) == expected);
 }
 
 #[test]
@@ -209,7 +235,7 @@ print(c, a + b)
 "#;
     let expected = "2 2";
     assert!(interpret(code) == expected);
-    assert!(compile(code) == expected);
+    assert!(compile_and_run(code) == expected);
 }
 
 #[test]
@@ -221,7 +247,7 @@ print("c")
 "#;
     let expected = "a\nc";
     assert!(interpret(code) == expected);
-    assert!(compile(code) == expected);
+    assert!(compile_and_run(code) == expected);
 }
 
 #[test]
@@ -231,7 +257,7 @@ print("a") // print("b")
 "#;
     let expected = "a";
     assert!(interpret(code) == expected);
-    assert!(compile(code) == expected);
+    assert!(compile_and_run(code) == expected);
 }
 
 #[test]
@@ -253,7 +279,7 @@ fn example_hello_world() {
     let code = include_str!("../examples/helloworld.blk");
     let expected = "Hello, World!";
     assert!(interpret(code) == expected);
-    assert!(compile(code) == expected);
+    assert!(compile_and_run(code) == expected);
 }
 
 #[test]
@@ -267,7 +293,7 @@ hello, sailor
 2
 3 3";
     assert!(interpret(code) == expected);
-    assert!(compile(code) == expected);
+    assert!(compile_and_run(code) == expected);
 }
 
 #[test]
@@ -279,7 +305,7 @@ print(a, b)
 "#;
     let expected = "1 test";
     assert!(interpret(code) == expected);
-    assert!(compile(code) == expected);
+    assert!(compile_and_run(code) == expected);
 }
 
 // #[test]
@@ -373,4 +399,70 @@ fn args_build_and_run_out() {
                 output: PathBuf::from("outfile")
             }
     );
+}
+
+#[test]
+fn err_unknown_func() {
+    let code = r#"prnt("test")"#;
+    let expected = ErrorType::Generic("Function `prnt` is not implemented".to_string());
+
+    match get_compiler_res(code) {
+        Err(err) => assert!(err == expected),
+        Ok(_) => panic!("Expected an error, but got Ok"),
+    }
+}
+
+#[test]
+fn err_variable_doesnt_exist() {
+    let code = r#"print(a)"#;
+    let expected = ErrorType::SyntaxError("Variable doesn't exist: `a`".to_string());
+
+    match get_compiler_res(code) {
+        Err(err) => assert!(err == expected),
+        Ok(_) => panic!("Expected an error, but got Ok"),
+    }
+}
+
+#[test]
+fn err_invalid_print_arg() {
+    let code = r#"print(let a = 2)"#;
+    let expected = ErrorType::Generic("Invalid argument to print".to_string());
+
+    match get_compiler_res(code) {
+        Err(err) => assert!(err == expected),
+        Ok(_) => panic!("Expected an error, but got Ok"),
+    }
+}
+
+#[test]
+fn err_add_not_num() {
+    let code = r#"print(1+"")"#;
+    let expected = ErrorType::Generic("Cannot add variable which is not a number".to_string());
+
+    match get_compiler_res(code) {
+        Err(err) => assert!(err == expected),
+        Ok(_) => panic!("Expected an error, but got Ok"),
+    }
+}
+
+#[test]
+fn err_invalid_expr_type() {
+    let code = r#"1"#;
+    let expected = ErrorType::Generic("This expression type is not yet implemented".to_string());
+
+    match get_compiler_res(code) {
+        Err(err) => assert!(err == expected),
+        Ok(_) => panic!("Expected an error, but got Ok"),
+    }
+}
+
+#[test]
+fn err_var_type_str_but_not_str() {
+    let code = r#"let str a = 1"#;
+    let expected = ErrorType::Generic("Variable type `str` does not match value type".to_string());
+
+    match get_compiler_res(code) {
+        Err(err) => assert!(err == expected),
+        Ok(_) => panic!("Expected an error, but got Ok"),
+    }
 }

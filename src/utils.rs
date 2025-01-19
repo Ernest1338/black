@@ -143,7 +143,7 @@ pub fn measure_time<T, F: FnOnce() -> T>(label: &str, f: F) -> T {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum ErrorType {
     SyntaxError(String),
     Generic(String),
