@@ -100,6 +100,7 @@ impl Compiler {
         Ok(())
     }
 
+    /// Handles the `print` function call by generating IR to print its arguments
     fn handle_print(&mut self, func_call: &FuncCall) -> Result<(), ErrorType> {
         let args = func_call.arguments.iter();
         let args_count = args.len();
