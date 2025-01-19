@@ -55,6 +55,16 @@ impl fmt::Display for Type {
     }
 }
 
+pub fn type_check(var_type: &Type, value: &Expr) -> bool {
+    matches!(
+        (var_type, value),
+        (Type::Str, Expr::StringLiteral(_))
+            | (Type::Int, Expr::Number(_) | Expr::BinExpr(_))
+            | (Type::Float, Expr::Number(_) | Expr::BinExpr(_))
+            | (Type::Double, Expr::Number(_) | Expr::BinExpr(_))
+    )
+}
+
 impl Token {
     /// Returns the length of the token as it appears in the source
     fn len(&self) -> usize {

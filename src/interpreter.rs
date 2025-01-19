@@ -1,5 +1,5 @@
 use crate::{
-    parser::{Ast, BinExpr, BinOpKind, FuncCall, Variable, VariableDeclaration},
+    parser::{type_check, Ast, BinExpr, BinOpKind, FuncCall, Variable, VariableDeclaration},
     utils::ErrorType,
     Expr,
 };
@@ -154,6 +154,14 @@ impl Interpreter {
         &mut self,
         variable_declaration: &VariableDeclaration,
     ) -> Result<(), ErrorType> {
+        if let Some(var_type) = &variable_declaration.typ {
+            if !type_check(var_type, &variable_declaration.value) {
+                return Err(ErrorType::Generic(format!(
+                    "Variable type `{var_type}` does not match value type",
+                )));
+            }
+        }
+
         self.variables.insert(
             variable_declaration.identifier.clone(),
             match &variable_declaration.value {

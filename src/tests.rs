@@ -484,6 +484,5 @@ fn err_var_type_str_but_not_str() {
     let expected = ErrorType::Generic("Variable type `str` does not match value type".to_string());
 
     assert_error(get_compiler_res(code), &expected);
-    // FIXME
-    // assert_error(get_interpreter_res(code), &expected);
+    assert_error(get_interpreter_res(code), &expected);
 }

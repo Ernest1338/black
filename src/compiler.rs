@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 use crate::{
-    parser::{Ast, BinExpr, FuncCall, Type, Variable, VariableDeclaration},
+    parser::{type_check, Ast, BinExpr, FuncCall, Variable, VariableDeclaration},
     utils::{dbg, dbg_plain, escape_string, get_tmp_fname, measure_time, ErrorType},
     Expr,
 };
@@ -199,16 +199,6 @@ impl Compiler {
         Ok(format!("%v{pk}"))
     }
 
-    fn is_valid_type(&self, var_type: &Type, value: &Expr) -> bool {
-        matches!(
-            (var_type, value),
-            (Type::Str, Expr::StringLiteral(_))
-                | (Type::Int, Expr::Number(_) | Expr::BinExpr(_))
-                | (Type::Float, Expr::Number(_) | Expr::BinExpr(_))
-                | (Type::Double, Expr::Number(_) | Expr::BinExpr(_))
-        )
-    }
-
     /// Handles a variable declaration, storing the variable in the `variables` map and generating
     /// corresponding data and IR
     fn handle_var_decl(
@@ -218,7 +208,7 @@ impl Compiler {
         let var_label = format!("${}", variable_declaration.identifier);
 
         if let Some(var_type) = &variable_declaration.typ {
-            if !self.is_valid_type(var_type, &variable_declaration.value) {
+            if !type_check(var_type, &variable_declaration.value) {
                 return Err(ErrorType::Generic(format!(
                     "Variable type `{var_type}` does not match value type",
                 )));
@@ -280,9 +270,9 @@ impl Compiler {
                 }
 
                 _ => {
-                    return Err(ErrorType::Generic(
-                        format!("Expression `{node:?}` in this context is not yet implemented"),
-                    ));
+                    return Err(ErrorType::Generic(format!(
+                        "Expression `{node:?}` in this context is not yet implemented"
+                    )));
                 }
             }
         }
