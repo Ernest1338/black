@@ -32,6 +32,20 @@ pub enum Token {
 }
 
 #[derive(Debug, PartialEq, Clone)]
+pub struct TokenPos {
+    line: usize,
+    column: usize,
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct PositionedToken {
+    token: Token,
+    position: TokenPos,
+}
+
+pub type Tokens = Vec<PositionedToken>;
+
+#[derive(Debug, PartialEq, Clone)]
 pub enum Type {
     Int,
     Long,
@@ -179,21 +193,34 @@ pub fn preprocess(code: &str) -> String {
 }
 
 /// Converts input text into a vector of tokens
-pub fn lexer(input: &str) -> Result<Vec<Token>, String> {
+pub fn lexer(input: &str) -> Result<Tokens, String> {
     let mut tokens = Vec::new();
+    let mut line_number = 1;
+
     for line in input.lines() {
         let mut remaining = line.trim();
+        let mut column_number = 1;
+
         while !remaining.is_empty() {
             match Token::from_str(remaining) {
                 Ok(token) => {
                     let token_length = token.len();
                     remaining = remaining[token_length..].trim_start();
-                    tokens.push(token);
+
+                    let position = TokenPos {
+                        line: line_number,
+                        column: column_number,
+                    };
+                    tokens.push(PositionedToken { token, position });
+                    column_number += token_length;
                 }
                 Err(_) => return Err(format!("Unexpected token: {remaining}")),
             }
         }
+
+        line_number += 1;
     }
+
     Ok(tokens)
 }
 
@@ -266,38 +293,63 @@ pub type Ast = Vec<Expr>;
 
 /// Parses tokens into expressions and builds an AST
 pub struct Parser<'a> {
-    iter: Peekable<std::slice::Iter<'a, Token>>,
+    iter: Peekable<std::slice::Iter<'a, PositionedToken>>,
 }
 
 impl<'a> Parser<'a> {
     /// Creates a new parser instance from a list of tokens
-    pub fn new(tokens: &'a [Token]) -> Self {
+    pub fn new(tokens: &'a [PositionedToken]) -> Self {
         Parser {
             iter: tokens.iter().peekable(),
         }
     }
 
+    /// Advances the iterator and returns the next token, or an error if there are no more tokens.
+    fn next_token(&mut self) -> Result<PositionedToken, String> {
+        self.iter
+            .next()
+            .cloned()
+            .ok_or_else(|| "Unexpected end of input".to_string())
+    }
+
+    /// Peeks at the next token without advancing the iterator, or returns an error if there are no more tokens.
+    fn peek_token(&mut self) -> Result<PositionedToken, String> {
+        self.iter
+            .peek()
+            .cloned()
+            .ok_or_else(|| "Unexpected end of input while peeking".to_string())
+            .cloned() // so many cloooones
+    }
+
+    pub fn error_at(pos: &TokenPos, msg: &str) -> String {
+        format!("Error at line {}, column {}: {}", pos.line, pos.column, msg)
+    }
+
     /// Parses primary expressions (numbers, identifiers, etc.)
     pub fn parse_primary(&mut self) -> Result<Expr, String> {
-        match self.iter.next() {
-            Some(Token::Number(n)) => Ok(Expr::Number(*n)),
-            Some(Token::Identifier(name)) => {
-                if let Some(Token::LeftParen) = self.iter.peek() {
+        let next = self.next_token()?;
+        match &next.token {
+            Token::Number(n) => Ok(Expr::Number(*n)),
+            Token::Identifier(name) => {
+                if matches!(self.peek_token()?.token, Token::LeftParen) {
                     self.parse_func_call(name)
                 } else {
                     Ok(Expr::Identifier(name.to_owned()))
                 }
             }
-            Some(Token::StringLiteral(s)) => Ok(Expr::StringLiteral(s.to_owned())), // Handle StringLiteral
-            Some(Token::LeftParen) => {
+            Token::StringLiteral(s) => Ok(Expr::StringLiteral(s.to_owned())),
+            Token::LeftParen => {
                 let expr = self.parse_expr()?;
-                if self.iter.next() != Some(&Token::RightParen) {
-                    return Err("Expected ')'".to_string());
+                let next = self.next_token()?;
+                if next.token != Token::RightParen {
+                    return Err(Self::error_at(&next.position, "Expected ')'"));
                 }
                 Ok(expr)
             }
-            Some(token) => Err(format!("Unexpected token: {:?}", token)),
-            None => Err("Unexpected end of input".to_string()),
+            token => Err(Self::error_at(
+                &next.position,
+                &format!("Unexpected token: {:?}", token),
+            )),
         }
     }
 
@@ -306,26 +358,25 @@ impl<'a> Parser<'a> {
         let mut args = Vec::new();
 
         // Consume the opening parenthesis '('
-        if self.iter.next() != Some(&Token::LeftParen) {
+        let next = self.next_token()?;
+        if next.token != Token::LeftParen {
             return Err("Expected '(' after function name".to_string());
         }
 
         // Parse arguments until a closing parenthesis ')'
         loop {
-            match self.iter.peek() {
-                Some(Token::RightParen) => {
+            let peek = self.peek_token()?;
+            match &peek.token {
+                Token::RightParen => {
                     self.iter.next(); // Consume the closing parenthesis ')'
                     break; // Exit the loop after finding the closing parenthesis
                 }
-                Some(Token::Comma) => {
+                Token::Comma => {
                     self.iter.next(); // Consume the comma and continue parsing arguments
                 }
-                Some(_) => {
+                _ => {
                     // Parse the next argument in the function call
                     args.push(self.parse_expr()?);
-                }
-                None => {
-                    return Err("Unexpected end of input, expected ')'".to_string());
                 }
             }
         }
@@ -345,9 +396,10 @@ impl<'a> Parser<'a> {
         make_node: fn(Box<Expr>, BinOpKind, Box<Expr>) -> Expr,
     ) -> Result<Expr, String> {
         let mut left = parse_operand(self)?;
-        while let Some(op) = self.iter.peek() {
-            if operators.contains(op) {
-                let operator = match op {
+        while self.peek_token().is_ok() {
+            let op = self.peek_token()?;
+            if operators.contains(&op.token) {
+                let operator = match op.token {
                     Token::Plus => BinOpKind::Plus,
                     Token::Minus => BinOpKind::Minus,
                     Token::Multiply => BinOpKind::Multiply,
@@ -368,7 +420,8 @@ impl<'a> Parser<'a> {
     pub fn parse_variable_declaration(&mut self) -> Result<Expr, String> {
         self.iter.next(); // Consume `Token::Let`
 
-        let typ = if let Some(Token::Type(t)) = self.iter.peek() {
+        let peek = self.peek_token()?;
+        let typ = if let Token::Type(t) = peek.token {
             let t = t.clone();
             self.iter.next(); // Consume the type token
             Some(t)
@@ -379,13 +432,14 @@ impl<'a> Parser<'a> {
         let identifier = self
             .iter
             .next()
-            .and_then(|token| match token {
+            .and_then(|token| match &token.token {
                 Token::Identifier(id) => Some(id),
                 _ => None,
             })
             .ok_or("Expected identifier after variable type")?;
 
-        if self.iter.next() != Some(&Token::Equals) {
+        let next = self.next_token()?;
+        if next.token != Token::Equals {
             return Err("Expected '=' after variable name".to_string());
         }
 
@@ -398,8 +452,9 @@ impl<'a> Parser<'a> {
 
     /// Parses general expressions
     pub fn parse_expr(&mut self) -> Result<Expr, String> {
-        match self.iter.peek() {
-            Some(Token::Let) => self.parse_variable_declaration(),
+        let peek = self.peek_token()?;
+        match peek.token {
+            Token::Let => self.parse_variable_declaration(),
             _ => self.parse_binary(
                 |parser| parser.parse_primary(),
                 &[Token::Multiply, Token::Divide, Token::Plus, Token::Minus],
@@ -417,7 +472,7 @@ impl<'a> Parser<'a> {
     /// Parses a complete program into an AST
     pub fn parse(&mut self) -> Result<Ast, String> {
         let mut ast = Vec::new();
-        while let Some(_token) = self.iter.peek() {
+        while let Some(_positioned_token) = self.iter.peek() {
             let expr = self.parse_expr()?;
             ast.push(expr);
         }
