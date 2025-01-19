@@ -172,3 +172,8 @@ pub fn display_error_stdout(err: ErrorType) {
         }
     };
 }
+
+/// Escapes backslashes and double quotes in a string for safe inclusion in string literals
+pub fn escape_string(s: &str) -> String {
+    s.replace("\\", "\\\\").replace("\"", "\\\"")
+}

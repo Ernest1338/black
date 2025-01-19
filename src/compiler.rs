@@ -2,7 +2,7 @@
 
 use crate::{
     parser::{Ast, BinExpr, FuncCall, Type, Variable, VariableDeclaration},
-    utils::{dbg, dbg_plain, get_tmp_fname, measure_time, ErrorType},
+    utils::{dbg, dbg_plain, escape_string, get_tmp_fname, measure_time, ErrorType},
     Expr,
 };
 use std::{
@@ -102,15 +102,14 @@ impl Compiler {
 
                     match arg {
                         Expr::StringLiteral(message) => {
-                            let escaped = message.replace("\\", "\\\\").replace("\"", "\\\"");
+                            let escaped = escape_string(message);
                             self.data
                                 .push_str(&format!("data $v{pk} = {{ b \"{escaped}\", b 0 }}\n"));
                             self.ir.push_str(&format!("  call $printf(l $v{pk})\n"));
                         }
 
                         Expr::Number(num) => {
-                            let escaped =
-                                num.to_string().replace("\\", "\\\\").replace("\"", "\\\"");
+                            let escaped = escape_string(&num.to_string());
                             self.data
                                 .push_str(&format!("data $v{pk} = {{ b \"{escaped}\", b 0 }}\n"));
                             self.ir.push_str(&format!("  call $printf(l $v{pk})\n"));
