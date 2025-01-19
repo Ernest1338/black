@@ -109,16 +109,12 @@ impl Compiler {
 
             match arg {
                 Expr::StringLiteral(message) => {
-                    let escaped = escape_string(message);
-                    self.data
-                        .push_str(&format!("data $v{pk} = {{ b \"{escaped}\", b 0 }}\n"));
+                    let pk = self.emit_str(message);
                     self.ir.push_str(&format!("  call $printf(l $v{pk})\n"));
                 }
 
                 Expr::Number(num) => {
-                    let escaped = escape_string(&num.to_string());
-                    self.data
-                        .push_str(&format!("data $v{pk} = {{ b \"{escaped}\", b 0 }}\n"));
+                    let pk = self.emit_str(&num.to_string());
                     self.ir.push_str(&format!("  call $printf(l $v{pk})\n"));
                 }
 
@@ -156,6 +152,15 @@ impl Compiler {
         self.ir.push_str("  call $printf(l $endl)\n");
 
         Ok(())
+    }
+
+    /// Emits given string to IR data section and returns pk for the variable
+    fn emit_str(&mut self, s: &str) -> usize {
+        let escaped = escape_string(s);
+        let pk = self.next_pk();
+        self.data
+            .push_str(&format!("data $v{pk} = {{ b \"{escaped}\", b 0 }}\n"));
+        pk
     }
 
     /// Evaluates an operand expression and returns its result temporary variable
