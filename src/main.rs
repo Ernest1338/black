@@ -28,7 +28,7 @@ mod compiler;
 mod interpreter;
 
 mod parser;
-use parser::{lexer, preprocess, Expr, Parser};
+use parser::{lexer, preprocess, Parser};
 
 mod utils;
 use utils::{dbg, dbg_pretty, measure_time, print_and_flush};

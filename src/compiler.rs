@@ -1,9 +1,10 @@
 #![allow(dead_code)]
 
 use crate::{
-    parser::{type_check, Ast, BinExpr, FuncCall, Variable, VariableDeclaration},
+    parser::{
+        type_check, Ast, BinExpr, Expr, FuncCall, PositionedExpr, Variable, VariableDeclaration,
+    },
     utils::{dbg, dbg_plain, escape_string, get_tmp_fname, measure_time, ErrorType},
-    Expr,
 };
 use std::{
     collections::HashMap,
@@ -107,7 +108,7 @@ impl Compiler {
         for (i, arg) in args.enumerate() {
             let pk = self.next_pk();
 
-            match arg {
+            match &arg.expr {
                 Expr::StringLiteral(message) => {
                     let pk = self.emit_str(message);
                     self.ir.push_str(&format!("  call $printf(l $v{pk})\n"));
@@ -166,9 +167,9 @@ impl Compiler {
     }
 
     /// Evaluates an operand expression and returns its result temporary variable
-    fn eval_operand(&mut self, operand: &Expr) -> Result<String, ErrorType> {
+    fn eval_operand(&mut self, operand: &PositionedExpr) -> Result<String, ErrorType> {
         let pk = self.next_pk();
-        match operand {
+        match &operand.expr {
             Expr::Number(n) => Ok(n.to_string()),
 
             Expr::Identifier(id) => {
@@ -215,7 +216,7 @@ impl Compiler {
             }
         }
 
-        let value = match &variable_declaration.value {
+        let value = match &variable_declaration.value.expr {
             Expr::Number(n) => {
                 self.data
                     .push_str(&format!("data {var_label} = {{ w {} }}\n", *n));
@@ -262,7 +263,7 @@ impl Compiler {
         let ast = self.ast.clone();
 
         for node in &ast {
-            match node {
+            match &node.expr {
                 Expr::FuncCall(func_call) => self.handle_func_call(func_call)?,
 
                 Expr::VariableDeclaration(variable_declaration) => {
@@ -271,7 +272,8 @@ impl Compiler {
 
                 _ => {
                     return Err(ErrorType::Generic(format!(
-                        "Expression `{node:?}` in this context is not yet implemented"
+                        "Expression `{:?}` in this context is not yet implemented",
+                        node.expr
                     )));
                 }
             }

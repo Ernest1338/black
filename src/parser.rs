@@ -32,15 +32,15 @@ pub enum Token {
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub struct TokenPos {
-    line: usize,
-    column: usize,
+pub struct Pos {
+    pub line: usize,
+    pub column: usize,
 }
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct PositionedToken {
-    token: Token,
-    position: TokenPos,
+    pub token: Token,
+    pub position: Pos,
 }
 
 pub type Tokens = Vec<PositionedToken>;
@@ -69,9 +69,9 @@ impl fmt::Display for Type {
     }
 }
 
-pub fn type_check(var_type: &Type, value: &Expr) -> bool {
+pub fn type_check(var_type: &Type, value: &PositionedExpr) -> bool {
     matches!(
-        (var_type, value),
+        (var_type, &value.expr),
         (Type::Str, Expr::StringLiteral(_))
             | (Type::Int, Expr::Number(_) | Expr::BinExpr(_))
             | (Type::Float, Expr::Number(_) | Expr::BinExpr(_))
@@ -189,7 +189,7 @@ pub fn preprocess(code: &str) -> String {
         .filter(|l| !l.starts_with("//"))
         .map(|l| l.split("//").next().unwrap())
         .collect::<Vec<&str>>()
-        .join(" ")
+        .join("\n")
 }
 
 /// Converts input text into a vector of tokens
@@ -207,7 +207,7 @@ pub fn lexer(input: &str) -> Result<Tokens, String> {
                     let token_length = token.len();
                     remaining = remaining[token_length..].trim_start();
 
-                    let position = TokenPos {
+                    let position = Pos {
                         line: line_number,
                         column: column_number,
                     };
@@ -241,21 +241,21 @@ pub enum Expr {
 pub struct VariableDeclaration {
     pub identifier: String,
     pub typ: Option<Type>,
-    pub value: Expr,
+    pub value: PositionedExpr,
 }
 
 /// Represents a function call in the AST
 #[derive(Debug, Clone)]
 pub struct FuncCall {
     pub name: String,
-    pub arguments: Vec<Expr>,
+    pub arguments: Vec<PositionedExpr>,
 }
 
 /// Represents a binary expression in the AST
 #[derive(Debug, Clone)]
 pub struct BinExpr {
-    pub lhs: Expr,
-    pub rhs: Expr,
+    pub lhs: PositionedExpr,
+    pub rhs: PositionedExpr,
     pub kind: BinOpKind,
 }
 
@@ -288,8 +288,14 @@ pub enum Variable {
     StringLiteral(String),
 }
 
+#[derive(Debug, Clone)]
+pub struct PositionedExpr {
+    pub expr: Expr,
+    pub position: Pos,
+}
+
 /// Type alias for the AST, a list of expressions
-pub type Ast = Vec<Expr>;
+pub type Ast = Vec<PositionedExpr>;
 
 /// Parses tokens into expressions and builds an AST
 pub struct Parser<'a> {
@@ -321,40 +327,42 @@ impl<'a> Parser<'a> {
             .cloned() // so many cloooones
     }
 
-    pub fn error_at(pos: &TokenPos, msg: &str) -> String {
-        format!("Error at line {}, column {}: {}", pos.line, pos.column, msg)
-    }
-
     /// Parses primary expressions (numbers, identifiers, etc.)
-    pub fn parse_primary(&mut self) -> Result<Expr, String> {
+    pub fn parse_primary(&mut self) -> Result<PositionedExpr, String> {
         let next = self.next_token()?;
         match &next.token {
-            Token::Number(n) => Ok(Expr::Number(*n)),
+            Token::Number(n) => Ok(PositionedExpr {
+                expr: Expr::Number(*n),
+                position: next.position,
+            }),
             Token::Identifier(name) => {
                 if matches!(self.peek_token()?.token, Token::LeftParen) {
-                    self.parse_func_call(name)
+                    self.parse_func_call(name, next.position)
                 } else {
-                    Ok(Expr::Identifier(name.to_owned()))
+                    Ok(PositionedExpr {
+                        expr: Expr::Identifier(name.to_owned()),
+                        position: next.position,
+                    })
                 }
             }
-            Token::StringLiteral(s) => Ok(Expr::StringLiteral(s.to_owned())),
+            Token::StringLiteral(s) => Ok(PositionedExpr {
+                expr: Expr::StringLiteral(s.to_owned()),
+                position: next.position,
+            }),
             Token::LeftParen => {
                 let expr = self.parse_expr()?;
                 let next = self.next_token()?;
                 if next.token != Token::RightParen {
-                    return Err(Self::error_at(&next.position, "Expected ')'"));
+                    return Err("Expected ')'".to_string());
                 }
                 Ok(expr)
             }
-            token => Err(Self::error_at(
-                &next.position,
-                &format!("Unexpected token: {:?}", token),
-            )),
+            token => Err(format!("Unexpected token: {token:?}")),
         }
     }
 
     /// Parses function calls
-    fn parse_func_call(&mut self, name: &str) -> Result<Expr, String> {
+    fn parse_func_call(&mut self, name: &str, position: Pos) -> Result<PositionedExpr, String> {
         let mut args = Vec::new();
 
         // Consume the opening parenthesis '('
@@ -382,20 +390,19 @@ impl<'a> Parser<'a> {
         }
 
         // Return the function call expression with arguments
-        Ok(Expr::FuncCall(FuncCall {
-            name: name.to_string(),
-            arguments: args,
-        }))
+        Ok(PositionedExpr {
+            expr: Expr::FuncCall(FuncCall {
+                name: name.to_string(),
+                arguments: args,
+            }),
+            position,
+        })
     }
 
     /// Parses binary expressions (e.g., addition, multiplication)
-    pub fn parse_binary(
-        &mut self,
-        parse_operand: fn(&mut Self) -> Result<Expr, String>,
-        operators: &[Token],
-        make_node: fn(Box<Expr>, BinOpKind, Box<Expr>) -> Expr,
-    ) -> Result<Expr, String> {
-        let mut left = parse_operand(self)?;
+    pub fn parse_binary(&mut self, operators: &[Token]) -> Result<PositionedExpr, String> {
+        let mut left = self.parse_primary()?;
+
         while self.peek_token().is_ok() {
             let op = self.peek_token()?;
             if operators.contains(&op.token) {
@@ -407,17 +414,34 @@ impl<'a> Parser<'a> {
                     _ => unreachable!(),
                 };
                 self.iter.next(); // Consume operator
-                let right = parse_operand(self)?;
-                left = make_node(Box::new(left), operator, Box::new(right));
+                let right = self.parse_primary()?;
+                left = PositionedExpr {
+                    expr: Expr::BinExpr(Box::new(BinExpr {
+                        lhs: left,
+                        kind: operator,
+                        rhs: right,
+                    })),
+                    position: op.position,
+                };
             } else {
                 break;
             }
         }
+
         Ok(left)
     }
 
+    /// Parses general expressions
+    pub fn parse_expr(&mut self) -> Result<PositionedExpr, String> {
+        let peek = self.peek_token()?;
+        match peek.token {
+            Token::Let => self.parse_variable_declaration(),
+            _ => self.parse_binary(&[Token::Multiply, Token::Divide, Token::Plus, Token::Minus]),
+        }
+    }
+
     /// Parses variable declarations
-    pub fn parse_variable_declaration(&mut self) -> Result<Expr, String> {
+    pub fn parse_variable_declaration(&mut self) -> Result<PositionedExpr, String> {
         self.iter.next(); // Consume `Token::Let`
 
         let peek = self.peek_token()?;
@@ -443,30 +467,14 @@ impl<'a> Parser<'a> {
             return Err("Expected '=' after variable name".to_string());
         }
 
-        Ok(Expr::VariableDeclaration(Box::new(VariableDeclaration {
-            identifier: identifier.to_string(),
-            typ,
-            value: self.parse_expr()?,
-        })))
-    }
-
-    /// Parses general expressions
-    pub fn parse_expr(&mut self) -> Result<Expr, String> {
-        let peek = self.peek_token()?;
-        match peek.token {
-            Token::Let => self.parse_variable_declaration(),
-            _ => self.parse_binary(
-                |parser| parser.parse_primary(),
-                &[Token::Multiply, Token::Divide, Token::Plus, Token::Minus],
-                |lhs, kind, rhs| {
-                    Expr::BinExpr(Box::new(BinExpr {
-                        lhs: *lhs,
-                        kind,
-                        rhs: *rhs,
-                    }))
-                },
-            ),
-        }
+        Ok(PositionedExpr {
+            expr: Expr::VariableDeclaration(Box::new(VariableDeclaration {
+                identifier: identifier.to_string(),
+                typ,
+                value: self.parse_expr()?,
+            })),
+            position: next.position,
+        })
     }
 
     /// Parses a complete program into an AST
