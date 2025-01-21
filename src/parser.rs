@@ -383,7 +383,9 @@ impl<'a> Parser<'a> {
                     _ => unreachable!(),
                 };
                 self.iter.next(); // Consume operator
+
                 let right = self.parse_primary()?;
+
                 left = Expr::BinExpr(Box::new(BinExpr {
                     lhs: left,
                     kind: operator,
@@ -413,10 +415,12 @@ impl<'a> Parser<'a> {
     /// Parses a complete program into an AST
     pub fn parse(&mut self) -> Result<Ast, String> {
         let mut ast = Vec::new();
-        while let Some(_token) = self.iter.peek() {
+
+        while self.iter.peek().is_some() {
             let expr = self.parse_expr()?;
             ast.push(expr);
         }
+
         Ok(ast)
     }
 }
