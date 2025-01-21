@@ -1,9 +1,7 @@
 use crate::{
-    parser::{
-        type_check, Ast, BinExpr, BinOpKind, Expr, FuncCall, PositionedExpr, Variable,
-        VariableDeclaration,
-    },
+    parser::{type_check, Ast, BinExpr, BinOpKind, FuncCall, Variable, VariableDeclaration},
     utils::ErrorType,
+    Expr,
 };
 use std::{collections::HashMap, fmt};
 
@@ -46,7 +44,7 @@ impl Interpreter {
         let ast = self.ast.clone();
 
         for node in &ast {
-            match &node.expr {
+            match node {
                 Expr::FuncCall(func_call) => self.handle_func_call(func_call)?,
                 Expr::VariableDeclaration(variable_declaration) => {
                     self.handle_var_decl(variable_declaration)?
@@ -60,8 +58,7 @@ impl Interpreter {
                 }
                 _ => {
                     return Err(ErrorType::Generic(format!(
-                        "Expression `{:?}` in this context is not yet implemented",
-                        node.expr
+                        "Expression `{node:?}` in this context is not yet implemented"
                     )))
                 }
             }
@@ -83,8 +80,8 @@ impl Interpreter {
     }
 
     /// Evaluates an operand
-    fn eval_operand(&self, operand: &PositionedExpr) -> Result<i64, ErrorType> {
-        match &operand.expr {
+    fn eval_operand(&self, operand: &Expr) -> Result<i64, ErrorType> {
+        match operand {
             Expr::BinExpr(bin_expr) => Ok(self.handle_bin_expr(bin_expr)?),
             Expr::Number(n) => Ok(*n),
             Expr::Identifier(id) => match self.get_var(id)? {
@@ -133,7 +130,7 @@ impl Interpreter {
         let args = func_call.arguments.iter();
         let args_count = args.len();
         for (i, arg) in args.enumerate() {
-            match &arg.expr {
+            match arg {
                 Expr::FuncCall(func_call) => self.handle_func_call(func_call)?,
                 Expr::BinExpr(bin_expr) => print!("{}", self.handle_bin_expr(bin_expr)?),
                 Expr::Number(n) => print!("{n}"),
@@ -167,7 +164,7 @@ impl Interpreter {
 
         self.variables.insert(
             variable_declaration.identifier.clone(),
-            match &variable_declaration.value.expr {
+            match &variable_declaration.value {
                 Expr::Number(n) => Variable::Number(*n),
                 Expr::StringLiteral(s) => Variable::StringLiteral(s.to_owned()),
                 Expr::BinExpr(bin_expr) => Variable::Number(self.handle_bin_expr(bin_expr)?),

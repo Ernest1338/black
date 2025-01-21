@@ -28,7 +28,7 @@ mod compiler;
 mod interpreter;
 
 mod parser;
-use parser::{lexer, preprocess, Parser};
+use parser::{lexer, preprocess, Expr, Parser};
 
 mod utils;
 use utils::{dbg, dbg_pretty, measure_time, print_and_flush};
@@ -145,7 +145,7 @@ fn main() {
     let ast = measure_time("Parsing", || match parser.parse() {
         Ok(ast) => ast,
         Err(err) => {
-            display_error(ErrorType::SyntaxError(err));
+            display_error(ErrorType::Generic(err));
             exit(1);
         }
     });

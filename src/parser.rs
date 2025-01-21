@@ -32,20 +32,6 @@ pub enum Token {
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub struct Pos {
-    pub line: usize,
-    pub column: usize,
-}
-
-#[derive(Debug, PartialEq, Clone)]
-pub struct PositionedToken {
-    pub token: Token,
-    pub position: Pos,
-}
-
-pub type Tokens = Vec<PositionedToken>;
-
-#[derive(Debug, PartialEq, Clone)]
 pub enum Type {
     Int,
     Long,
@@ -69,9 +55,9 @@ impl fmt::Display for Type {
     }
 }
 
-pub fn type_check(var_type: &Type, value: &PositionedExpr) -> bool {
+pub fn type_check(var_type: &Type, value: &Expr) -> bool {
     matches!(
-        (var_type, &value.expr),
+        (var_type, value),
         (Type::Str, Expr::StringLiteral(_))
             | (Type::Int, Expr::Number(_) | Expr::BinExpr(_))
             | (Type::Float, Expr::Number(_) | Expr::BinExpr(_))
@@ -189,38 +175,25 @@ pub fn preprocess(code: &str) -> String {
         .filter(|l| !l.starts_with("//"))
         .map(|l| l.split("//").next().unwrap())
         .collect::<Vec<&str>>()
-        .join("\n")
+        .join(" ")
 }
 
 /// Converts input text into a vector of tokens
-pub fn lexer(input: &str) -> Result<Tokens, String> {
+pub fn lexer(input: &str) -> Result<Vec<Token>, String> {
     let mut tokens = Vec::new();
-    let mut line_number = 1;
-
     for line in input.lines() {
         let mut remaining = line.trim();
-        let mut column_number = 1;
-
         while !remaining.is_empty() {
             match Token::from_str(remaining) {
                 Ok(token) => {
                     let token_length = token.len();
                     remaining = remaining[token_length..].trim_start();
-
-                    let position = Pos {
-                        line: line_number,
-                        column: column_number,
-                    };
-                    tokens.push(PositionedToken { token, position });
-                    column_number += token_length;
+                    tokens.push(token);
                 }
                 Err(_) => return Err(format!("Unexpected token: {remaining}")),
             }
         }
-
-        line_number += 1;
     }
-
     Ok(tokens)
 }
 
@@ -241,21 +214,21 @@ pub enum Expr {
 pub struct VariableDeclaration {
     pub identifier: String,
     pub typ: Option<Type>,
-    pub value: PositionedExpr,
+    pub value: Expr,
 }
 
 /// Represents a function call in the AST
 #[derive(Debug, Clone)]
 pub struct FuncCall {
     pub name: String,
-    pub arguments: Vec<PositionedExpr>,
+    pub arguments: Vec<Expr>,
 }
 
 /// Represents a binary expression in the AST
 #[derive(Debug, Clone)]
 pub struct BinExpr {
-    pub lhs: PositionedExpr,
-    pub rhs: PositionedExpr,
+    pub lhs: Expr,
+    pub rhs: Expr,
     pub kind: BinOpKind,
 }
 
@@ -288,125 +261,93 @@ pub enum Variable {
     StringLiteral(String),
 }
 
-#[derive(Debug, Clone)]
-pub struct PositionedExpr {
-    pub expr: Expr,
-    pub position: Pos,
-}
-
 /// Type alias for the AST, a list of expressions
-pub type Ast = Vec<PositionedExpr>;
+pub type Ast = Vec<Expr>;
 
 /// Parses tokens into expressions and builds an AST
 pub struct Parser<'a> {
-    iter: Peekable<std::slice::Iter<'a, PositionedToken>>,
+    iter: Peekable<std::slice::Iter<'a, Token>>,
 }
 
 impl<'a> Parser<'a> {
     /// Creates a new parser instance from a list of tokens
-    pub fn new(tokens: &'a [PositionedToken]) -> Self {
+    pub fn new(tokens: &'a [Token]) -> Self {
         Parser {
             iter: tokens.iter().peekable(),
         }
     }
 
-    /// Advances the iterator and returns the next token, or an error if there are no more tokens.
-    fn next_token(&mut self) -> Result<PositionedToken, String> {
-        self.iter
-            .next()
-            .cloned()
-            .ok_or_else(|| "Unexpected end of input".to_string())
-    }
-
-    /// Peeks at the next token without advancing the iterator, or returns an error if there are no more tokens.
-    fn peek_token(&mut self) -> Result<PositionedToken, String> {
-        self.iter
-            .peek()
-            .cloned()
-            .ok_or_else(|| "Unexpected end of input while peeking".to_string())
-            .cloned() // so many cloooones
-    }
-
     /// Parses primary expressions (numbers, identifiers, etc.)
-    pub fn parse_primary(&mut self) -> Result<PositionedExpr, String> {
-        let next = self.next_token()?;
-        match &next.token {
-            Token::Number(n) => Ok(PositionedExpr {
-                expr: Expr::Number(*n),
-                position: next.position,
-            }),
-            Token::Identifier(name) => {
-                if matches!(self.peek_token()?.token, Token::LeftParen) {
-                    self.parse_func_call(name, next.position)
+    pub fn parse_primary(&mut self) -> Result<Expr, String> {
+        match self.iter.next() {
+            Some(Token::Number(n)) => Ok(Expr::Number(*n)),
+            Some(Token::Identifier(name)) => {
+                if let Some(Token::LeftParen) = self.iter.peek() {
+                    self.parse_func_call(name)
                 } else {
-                    Ok(PositionedExpr {
-                        expr: Expr::Identifier(name.to_owned()),
-                        position: next.position,
-                    })
+                    Ok(Expr::Identifier(name.to_owned()))
                 }
             }
-            Token::StringLiteral(s) => Ok(PositionedExpr {
-                expr: Expr::StringLiteral(s.to_owned()),
-                position: next.position,
-            }),
-            Token::LeftParen => {
+            Some(Token::StringLiteral(s)) => Ok(Expr::StringLiteral(s.to_owned())), // Handle StringLiteral
+            Some(Token::LeftParen) => {
                 let expr = self.parse_expr()?;
-                let next = self.next_token()?;
-                if next.token != Token::RightParen {
+                if self.iter.next() != Some(&Token::RightParen) {
                     return Err("Expected ')'".to_string());
                 }
                 Ok(expr)
             }
-            token => Err(format!("Unexpected token: {token:?}")),
+            Some(token) => Err(format!("Unexpected token: {:?}", token)),
+            None => Err("Unexpected end of input".to_string()),
         }
     }
 
     /// Parses function calls
-    fn parse_func_call(&mut self, name: &str, position: Pos) -> Result<PositionedExpr, String> {
+    fn parse_func_call(&mut self, name: &str) -> Result<Expr, String> {
         let mut args = Vec::new();
 
         // Consume the opening parenthesis '('
-        let next = self.next_token()?;
-        if next.token != Token::LeftParen {
+        if self.iter.next() != Some(&Token::LeftParen) {
             return Err("Expected '(' after function name".to_string());
         }
 
         // Parse arguments until a closing parenthesis ')'
         loop {
-            let peek = self.peek_token()?;
-            match &peek.token {
-                Token::RightParen => {
+            match self.iter.peek() {
+                Some(Token::RightParen) => {
                     self.iter.next(); // Consume the closing parenthesis ')'
                     break; // Exit the loop after finding the closing parenthesis
                 }
-                Token::Comma => {
+                Some(Token::Comma) => {
                     self.iter.next(); // Consume the comma and continue parsing arguments
                 }
-                _ => {
+                Some(_) => {
                     // Parse the next argument in the function call
                     args.push(self.parse_expr()?);
+                }
+                None => {
+                    return Err("Unexpected end of input, expected ')'".to_string());
                 }
             }
         }
 
         // Return the function call expression with arguments
-        Ok(PositionedExpr {
-            expr: Expr::FuncCall(FuncCall {
-                name: name.to_string(),
-                arguments: args,
-            }),
-            position,
-        })
+        Ok(Expr::FuncCall(FuncCall {
+            name: name.to_string(),
+            arguments: args,
+        }))
     }
 
     /// Parses binary expressions (e.g., addition, multiplication)
-    pub fn parse_binary(&mut self, operators: &[Token]) -> Result<PositionedExpr, String> {
-        let mut left = self.parse_primary()?;
-
-        while self.peek_token().is_ok() {
-            let op = self.peek_token()?;
-            if operators.contains(&op.token) {
-                let operator = match op.token {
+    pub fn parse_binary(
+        &mut self,
+        parse_operand: fn(&mut Self) -> Result<Expr, String>,
+        operators: &[Token],
+        make_node: fn(Box<Expr>, BinOpKind, Box<Expr>) -> Expr,
+    ) -> Result<Expr, String> {
+        let mut left = parse_operand(self)?;
+        while let Some(op) = self.iter.peek() {
+            if operators.contains(op) {
+                let operator = match op {
                     Token::Plus => BinOpKind::Plus,
                     Token::Minus => BinOpKind::Minus,
                     Token::Multiply => BinOpKind::Multiply,
@@ -414,38 +355,20 @@ impl<'a> Parser<'a> {
                     _ => unreachable!(),
                 };
                 self.iter.next(); // Consume operator
-                let right = self.parse_primary()?;
-                left = PositionedExpr {
-                    expr: Expr::BinExpr(Box::new(BinExpr {
-                        lhs: left,
-                        kind: operator,
-                        rhs: right,
-                    })),
-                    position: op.position,
-                };
+                let right = parse_operand(self)?;
+                left = make_node(Box::new(left), operator, Box::new(right));
             } else {
                 break;
             }
         }
-
         Ok(left)
     }
 
-    /// Parses general expressions
-    pub fn parse_expr(&mut self) -> Result<PositionedExpr, String> {
-        let peek = self.peek_token()?;
-        match peek.token {
-            Token::Let => self.parse_variable_declaration(),
-            _ => self.parse_binary(&[Token::Multiply, Token::Divide, Token::Plus, Token::Minus]),
-        }
-    }
-
     /// Parses variable declarations
-    pub fn parse_variable_declaration(&mut self) -> Result<PositionedExpr, String> {
+    pub fn parse_variable_declaration(&mut self) -> Result<Expr, String> {
         self.iter.next(); // Consume `Token::Let`
 
-        let peek = self.peek_token()?;
-        let typ = if let Token::Type(t) = peek.token {
+        let typ = if let Some(Token::Type(t)) = self.iter.peek() {
             let t = t.clone();
             self.iter.next(); // Consume the type token
             Some(t)
@@ -456,31 +379,45 @@ impl<'a> Parser<'a> {
         let identifier = self
             .iter
             .next()
-            .and_then(|token| match &token.token {
+            .and_then(|token| match token {
                 Token::Identifier(id) => Some(id),
                 _ => None,
             })
             .ok_or("Expected identifier after variable type")?;
 
-        let next = self.next_token()?;
-        if next.token != Token::Equals {
+        if self.iter.next() != Some(&Token::Equals) {
             return Err("Expected '=' after variable name".to_string());
         }
 
-        Ok(PositionedExpr {
-            expr: Expr::VariableDeclaration(Box::new(VariableDeclaration {
-                identifier: identifier.to_string(),
-                typ,
-                value: self.parse_expr()?,
-            })),
-            position: next.position,
-        })
+        Ok(Expr::VariableDeclaration(Box::new(VariableDeclaration {
+            identifier: identifier.to_string(),
+            typ,
+            value: self.parse_expr()?,
+        })))
+    }
+
+    /// Parses general expressions
+    pub fn parse_expr(&mut self) -> Result<Expr, String> {
+        match self.iter.peek() {
+            Some(Token::Let) => self.parse_variable_declaration(),
+            _ => self.parse_binary(
+                |parser| parser.parse_primary(),
+                &[Token::Multiply, Token::Divide, Token::Plus, Token::Minus],
+                |lhs, kind, rhs| {
+                    Expr::BinExpr(Box::new(BinExpr {
+                        lhs: *lhs,
+                        kind,
+                        rhs: *rhs,
+                    }))
+                },
+            ),
+        }
     }
 
     /// Parses a complete program into an AST
     pub fn parse(&mut self) -> Result<Ast, String> {
         let mut ast = Vec::new();
-        while let Some(_positioned_token) = self.iter.peek() {
+        while let Some(_token) = self.iter.peek() {
             let expr = self.parse_expr()?;
             ast.push(expr);
         }
