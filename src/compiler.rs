@@ -334,7 +334,7 @@ impl Compiler {
 
         measure_time("CC execution", || {
             let mut cc = Command::new("cc")
-                .args(["-x", "assembler", "-o", out_file_str, "-"])
+                .args(["-x", "assembler", "-static", "-o", out_file_str, "-"])
                 .stdin(Stdio::piped())
                 .stdout(Stdio::piped())
                 .spawn()

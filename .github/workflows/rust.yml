@@ -25,19 +25,29 @@ jobs:
         cd qbe
         sudo make install
 
+    - name: Adding musl target
+      run: rustup target add x86_64-unknown-linux-musl
+
     - name: Build Debug
-      run: cargo build --verbose
+      run: cargo build --target=aarch64-unknown-linux-musl --verbose
 
     - name: Build Release
-      run: cargo build --release --verbose
+      run: cargo build --target=aarch64-unknown-linux-musl --release --verbose
 
     - name: Run tests
       run: cargo test --verbose
 
-    - name: Upload binary artifact
+    - name: Upload debug build
       if: success()
       uses: actions/upload-artifact@v3
       with:
-        name: black-binary
-        path: target/release/black
+        name: black-debug
+        path: target/x86_64-unknown-linux-musl/debug/black
+
+    - name: Upload release build
+      if: success()
+      uses: actions/upload-artifact@v3
+      with:
+        name: black
+        path: target/x86_64-unknown-linux-musl/release/black
 
