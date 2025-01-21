@@ -31,20 +31,11 @@ jobs:
     - name: Adding x86_64 musl target
       run: rustup target add x86_64-unknown-linux-musl
 
-    - name: Adding aarch64 musl target
-      run: rustup target add aarch64-unknown-linux-musl
-
     - name: Build Debug x86
       run: cargo build --target=x86_64-unknown-linux-musl --verbose
 
     - name: Build Release x86
       run: cargo build --target=x86_64-unknown-linux-musl --release --verbose
-
-    - name: Build Debug aarch64
-      run: cargo build --target=aarch64-unknown-linux-musl --verbose
-
-    - name: Build Release aarch64
-      run: cargo build --target=aarch64-unknown-linux-musl --release --verbose
 
     - name: Upload Debug x86 build
       if: success()
@@ -59,18 +50,4 @@ jobs:
       with:
         name: black
         path: target/x86_64-unknown-linux-musl/release/black
-
-    - name: Upload Debug aarch64 build
-      if: success()
-      uses: actions/upload-artifact@v4
-      with:
-        name: black-arm-debug
-        path: target/aarch64-unknown-linux-musl/debug/black
-
-    - name: Upload Release aarch64 build
-      if: success()
-      uses: actions/upload-artifact@v4
-      with:
-        name: black-arm
-        path: target/aarch64-unknown-linux-musl/release/black
 
