@@ -2,7 +2,7 @@ use crate::{
     compiler::Compiler,
     interpreter::Interpreter,
     parser::expr_to_line_number,
-    utils::{display_error, display_error_stdout, ErrorType},
+    utils::{display_error, display_error_stdout, ErrorInner, ErrorType},
 };
 use std::{
     fs::{canonicalize, read_to_string},
@@ -83,7 +83,7 @@ fn main() {
             let tokens = match lexer(&code) {
                 Ok(tokens) => tokens,
                 Err(err) => {
-                    display_error_stdout(ErrorType::Generic(err));
+                    display_error_stdout(err);
                     continue;
                 }
             };
@@ -91,7 +91,7 @@ fn main() {
             let ast = match parser.parse() {
                 Ok(ast) => ast,
                 Err(err) => {
-                    display_error_stdout(ErrorType::Generic(err));
+                    display_error_stdout(err);
                     continue;
                 }
             };
@@ -114,10 +114,10 @@ fn main() {
         Some(input) => match read_to_string(input) {
             Ok(input) => input,
             Err(_) => {
-                display_error(
-                    ErrorType::Generic("Could not read source code file".to_string()),
-                    Some(1),
-                );
+                display_error(ErrorType::Generic(ErrorInner {
+                    message: "Could not read source code file".to_string(),
+                    line_number: None,
+                }));
                 exit(1);
             }
         },
@@ -135,7 +135,7 @@ fn main() {
     let tokens = measure_time("Lexical Analysis", || match lexer(&source_code) {
         Ok(tokens) => tokens,
         Err(err) => {
-            display_error(ErrorType::SyntaxError(err), Some(1));
+            display_error(err);
             exit(1);
         }
     });
@@ -148,7 +148,7 @@ fn main() {
     let ast = measure_time("Parsing", || match parser.parse() {
         Ok(ast) => ast,
         Err(err) => {
-            display_error(ErrorType::SyntaxError(err), Some(1));
+            display_error(err);
             exit(1);
         }
     });
@@ -161,7 +161,7 @@ fn main() {
         let mut interpreter = Interpreter::from_ast(ast);
         measure_time("Interpreter Execution", || {
             if let Err(err) = interpreter.run() {
-                display_error(err, Some(1));
+                display_error(err);
                 exit(1);
             }
         });
@@ -172,7 +172,7 @@ fn main() {
         let mut compiler = Compiler::from_ast(ast);
         measure_time("Full Compiler Execution", || {
             if let Err(err) = compiler.compile(args.output.clone()) {
-                display_error(err, Some(1));
+                display_error(err);
                 exit(1);
             }
         });
@@ -193,7 +193,7 @@ fn main() {
         let mut compiler = Compiler::from_ast(ast);
         measure_time("Full Compiler Execution", || {
             if let Err(err) = compiler.compile(args.output) {
-                display_error(err, Some(1));
+                display_error(err);
                 exit(1);
             }
         });

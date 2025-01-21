@@ -1,8 +1,8 @@
 #![allow(dead_code)]
 
 use crate::{
-    parser::{type_check, Ast, BinExpr, FuncCall, Variable, VariableDeclaration},
-    utils::{dbg, dbg_plain, escape_string, get_tmp_fname, measure_time, ErrorType},
+    parser::{type_check, Ast, BinExpr, FuncCall, Variable, VariableDeclaration, expr_to_line_number},
+    utils::{dbg, dbg_plain, escape_string, get_tmp_fname, measure_time, ErrorInner, ErrorType},
     Expr,
 };
 use std::{
@@ -68,10 +68,12 @@ impl Compiler {
 
     /// Retrieves a variable by its identifier, returning it or exiting with an error if not found
     fn get_var(&self, ident: &str) -> Result<Variable, ErrorType> {
-        self.variables
-            .get(ident)
-            .cloned()
-            .ok_or_else(|| ErrorType::SyntaxError(format!("Variable doesn't exist: `{}`", ident)))
+        let err = ErrorType::SyntaxError(ErrorInner {
+            message: format!("Variable doesn't exist: `{ident}`"),
+            line_number: None,
+        });
+
+        self.variables.get(ident).cloned().ok_or(err)
     }
 
     /// Increments and returns the primary key, used for generating unique variable labels
@@ -90,10 +92,10 @@ impl Compiler {
         match func_call.name.as_ref() {
             "print" => self.handle_print(func_call)?,
             _ => {
-                return Err(ErrorType::Generic(format!(
-                    "Function `{}` is not implemented",
-                    func_call.name
-                )))
+                return Err(ErrorType::Generic(ErrorInner {
+                    message: format!("Function `{}` is not implemented", func_call.name),
+                    line_number: None,
+                }))
             }
         }
 
@@ -141,7 +143,10 @@ impl Compiler {
                 }
 
                 _ => {
-                    return Err(ErrorType::Generic("Invalid argument to print".to_string()));
+                    return Err(ErrorType::Generic(ErrorInner {
+                        message: "Invalid argument to print".to_string(),
+                        line_number: None,
+                    }));
                 }
             }
 
@@ -178,9 +183,10 @@ impl Compiler {
 
             Expr::BinExpr(bin_expr) => self.handle_bin_expr(bin_expr),
 
-            _ => Err(ErrorType::Generic(
-                "Cannot add variable which is not a number".to_string(),
-            )),
+            _ => Err(ErrorType::Generic(ErrorInner {
+                message: "Cannot add variable which is not a number".to_string(),
+                line_number: None,
+            })),
         }
     }
 
@@ -209,9 +215,10 @@ impl Compiler {
 
         if let Some(var_type) = &variable_declaration.typ {
             if !type_check(var_type, &variable_declaration.value) {
-                return Err(ErrorType::Generic(format!(
-                    "Variable type `{var_type}` does not match value type",
-                )));
+                return Err(ErrorType::Generic(ErrorInner {
+                    message: format!("Variable type `{var_type}` does not match value type",),
+                    line_number: None,
+                }));
             }
         }
 
@@ -243,9 +250,10 @@ impl Compiler {
             }
 
             _ => {
-                return Err(ErrorType::Generic(
-                    "Can only store strings and numbers in variables".to_string(),
-                ));
+                return Err(ErrorType::Generic(ErrorInner {
+                    message: "Can only store strings and numbers in variables".to_string(),
+                    line_number: None,
+                }));
             }
         };
 
@@ -270,9 +278,12 @@ impl Compiler {
                 }
 
                 _ => {
-                    return Err(ErrorType::Generic(format!(
-                        "Expression `{node:?}` in this context is not yet implemented"
-                    )));
+                    return Err(ErrorType::Generic(ErrorInner {
+                        message: format!(
+                            "Expression `{node:?}` in this context is not yet implemented"
+                        ),
+                        line_number: None,
+                    }));
                 }
             }
         }

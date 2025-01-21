@@ -1,6 +1,6 @@
 use crate::{
     parser::{type_check, Ast, BinExpr, BinOpKind, FuncCall, Variable, VariableDeclaration},
-    utils::ErrorType,
+    utils::{ErrorInner, ErrorType},
     Expr,
 };
 use std::{collections::HashMap, fmt};
@@ -57,9 +57,12 @@ impl Interpreter {
                     println!("{var}");
                 }
                 _ => {
-                    return Err(ErrorType::Generic(format!(
-                        "Expression `{node:?}` in this context is not yet implemented"
-                    )))
+                    return Err(ErrorType::Generic(ErrorInner {
+                        message: format!(
+                            "Expression `{node:?}` in this context is not yet implemented"
+                        ),
+                        line_number: None,
+                    }))
                 }
             }
         }
@@ -74,9 +77,10 @@ impl Interpreter {
                 return Ok(s.clone());
             }
         }
-        Err(ErrorType::SyntaxError(format!(
-            "Variable doesn't exist: `{ident}`"
-        )))
+        Err(ErrorType::SyntaxError(ErrorInner {
+            message: format!("Variable doesn't exist: `{ident}`"),
+            line_number: None,
+        }))
     }
 
     /// Evaluates an operand
@@ -86,13 +90,15 @@ impl Interpreter {
             Expr::Number(n) => Ok(*n),
             Expr::Identifier(id) => match self.get_var(id)? {
                 Variable::Number(n) => Ok(n),
-                _ => Err(ErrorType::Generic(
-                    "Cannot add variable which is not a number".to_string(),
-                )),
+                _ => Err(ErrorType::Generic(ErrorInner {
+                    message: "Cannot add variable which is not a number".to_string(),
+                    line_number: None,
+                })),
             },
-            _ => Err(ErrorType::Generic(
-                "Cannot add variable which is not a number".to_string(),
-            )),
+            _ => Err(ErrorType::Generic(ErrorInner {
+                message: "Cannot add variable which is not a number".to_string(),
+                line_number: None,
+            })),
         }
     }
 
@@ -115,10 +121,10 @@ impl Interpreter {
             "print" => self.handle_print(func_call)?,
             _ => {
                 // TODO: handle user defined functions
-                return Err(ErrorType::Generic(format!(
-                    "Function `{}` is not implemented",
-                    &func_call.name
-                )));
+                return Err(ErrorType::Generic(ErrorInner {
+                    message: format!("Function `{}` is not implemented", &func_call.name),
+                    line_number: None,
+                }));
             }
         }
 
@@ -136,7 +142,12 @@ impl Interpreter {
                 Expr::Number(n) => print!("{n}"),
                 Expr::Identifier(id) => print!("{}", self.get_var(id)?),
                 Expr::StringLiteral(s) => print!("{s}"),
-                _ => return Err(ErrorType::Generic("Invalid argument to print".to_string())),
+                _ => {
+                    return Err(ErrorType::Generic(ErrorInner {
+                        message: "Invalid argument to print".to_string(),
+                        line_number: None,
+                    }))
+                }
             }
             if i != args_count - 1 {
                 print!(" ");
@@ -156,9 +167,10 @@ impl Interpreter {
     ) -> Result<(), ErrorType> {
         if let Some(var_type) = &variable_declaration.typ {
             if !type_check(var_type, &variable_declaration.value) {
-                return Err(ErrorType::Generic(format!(
-                    "Variable type `{var_type}` does not match value type",
-                )));
+                return Err(ErrorType::Generic(ErrorInner {
+                    message: format!("Variable type `{var_type}` does not match value type",),
+                    line_number: None,
+                }));
             }
         }
 
@@ -169,9 +181,10 @@ impl Interpreter {
                 Expr::StringLiteral(s) => Variable::StringLiteral(s.to_owned()),
                 Expr::BinExpr(bin_expr) => Variable::Number(self.handle_bin_expr(bin_expr)?),
                 _ => {
-                    return Err(ErrorType::Generic(
-                        "Can only store strings and number in variables".to_string(),
-                    ));
+                    return Err(ErrorType::Generic(ErrorInner {
+                        message: "Can only store strings and number in variables".to_string(),
+                        line_number: None,
+                    }));
                 }
             },
         );

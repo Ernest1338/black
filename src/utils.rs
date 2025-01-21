@@ -144,35 +144,65 @@ pub fn measure_time<T, F: FnOnce() -> T>(label: &str, f: F) -> T {
 }
 
 #[derive(Debug, PartialEq)]
+pub struct ErrorInner {
+    pub message: String,
+    pub line_number: Option<usize>,
+}
+
+#[derive(Debug, PartialEq)]
 pub enum ErrorType {
-    SyntaxError(String),
-    Generic(String),
+    SyntaxError(ErrorInner),
+    Generic(ErrorInner),
+}
+
+fn get_line_nr_str(line_nr: Option<usize>) -> String {
+    match line_nr {
+        Some(line_nr) => format!(" on line {line_nr}:"),
+        None => "".to_string(),
+    }
 }
 
 /// Display error to the user in a pretty way
-pub fn display_error(err: ErrorType, line: Option<usize>) {
-    let line = match line {
-        Some(line) => &format!(" on line {line}:"),
-        None => "",
-    };
+pub fn display_error(err: ErrorType) {
     match err {
-        ErrorType::SyntaxError(s) => {
-            eprintln!("{}{line} {s}", color("[Syntax Error]", Color::LightRed),);
+        ErrorType::SyntaxError(inner) => {
+            eprintln!(
+                "{}{} {}",
+                color("[Syntax Error]", Color::LightRed),
+                get_line_nr_str(inner.line_number),
+                inner.message
+            );
         }
-        ErrorType::Generic(s) => {
-            eprintln!("{}{line} {s}", color("[Error]", Color::LightRed))
+        ErrorType::Generic(inner) => {
+            eprintln!(
+                "{}{} {}",
+                color("[Error]", Color::LightRed),
+                get_line_nr_str(inner.line_number),
+                inner.message
+            );
         }
     };
 }
 
+// FIXME code duplication
 /// Display error to the user in a pretty way
 pub fn display_error_stdout(err: ErrorType) {
     match err {
-        ErrorType::SyntaxError(s) => {
-            println!("{} {s}", color("[Syntax Error]", Color::LightRed))
+        ErrorType::SyntaxError(inner) => {
+            println!(
+                "{}{} {}",
+                color("[Syntax Error]", Color::LightRed),
+                get_line_nr_str(inner.line_number),
+                inner.message
+            );
         }
-        ErrorType::Generic(s) => {
-            println!("{} {s}", color("[Error]", Color::LightRed))
+        ErrorType::Generic(inner) => {
+            println!(
+                "{}{} {}",
+                color("[Error]", Color::LightRed),
+                get_line_nr_str(inner.line_number),
+                inner.message
+            );
         }
     };
 }

@@ -1,5 +1,6 @@
 #![allow(dead_code)]
 
+use crate::utils::{ErrorInner, ErrorType};
 use std::{fmt, iter::Peekable, str::FromStr};
 
 /// Represents different token types for the lexer
@@ -179,7 +180,7 @@ pub fn preprocess(code: &str) -> String {
 }
 
 /// Converts input text into a vector of tokens
-pub fn lexer(input: &str) -> Result<Vec<Token>, String> {
+pub fn lexer(input: &str) -> Result<Vec<Token>, ErrorType> {
     let mut tokens = Vec::new();
     for line in input.lines() {
         let mut remaining = line.trim();
@@ -190,7 +191,12 @@ pub fn lexer(input: &str) -> Result<Vec<Token>, String> {
                     remaining = remaining[token_length..].trim_start();
                     tokens.push(token);
                 }
-                Err(_) => return Err(format!("Unexpected token: {remaining}")),
+                Err(_) => {
+                    return Err(ErrorType::SyntaxError(ErrorInner {
+                        message: format!("Unexpected token: {remaining}"),
+                        line_number: None,
+                    }))
+                }
             }
         }
     }
@@ -322,7 +328,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses primary expressions (numbers, identifiers, etc.)
-    pub fn parse_primary(&mut self) -> Result<Expr, String> {
+    pub fn parse_primary(&mut self) -> Result<Expr, ErrorType> {
         match self.iter.next() {
             Some(Token::Number(n)) => Ok(Expr::Number(*n)),
             Some(Token::Identifier(name)) => {
@@ -336,22 +342,34 @@ impl<'a> Parser<'a> {
             Some(Token::LeftParen) => {
                 let expr = self.parse_expr()?;
                 if self.iter.next() != Some(&Token::RightParen) {
-                    return Err("Expected ')'".to_string());
+                    return Err(ErrorType::SyntaxError(ErrorInner {
+                        message: "Expected ')'".to_string(),
+                        line_number: None,
+                    }));
                 }
                 Ok(expr)
             }
-            Some(token) => Err(format!("Unexpected token: {:?}", token)),
-            None => Err("Unexpected end of input".to_string()),
+            Some(token) => Err(ErrorType::SyntaxError(ErrorInner {
+                message: format!("Unexpected token: {:?}", token),
+                line_number: None,
+            })),
+            None => Err(ErrorType::SyntaxError(ErrorInner {
+                message: "Unexpected end of input".to_string(),
+                line_number: None,
+            })),
         }
     }
 
     /// Parses function calls
-    fn parse_func_call(&mut self, name: &str) -> Result<Expr, String> {
+    fn parse_func_call(&mut self, name: &str) -> Result<Expr, ErrorType> {
         let mut args = Vec::new();
 
         // Consume the opening parenthesis '('
         if self.iter.next() != Some(&Token::LeftParen) {
-            return Err("Expected '(' after function name".to_string());
+            return Err(ErrorType::SyntaxError(ErrorInner {
+                message: "Expected '(' after function name".to_string(),
+                line_number: None,
+            }));
         }
 
         // Parse arguments until a closing parenthesis ')'
@@ -369,7 +387,10 @@ impl<'a> Parser<'a> {
                     args.push(self.parse_expr()?);
                 }
                 None => {
-                    return Err("Unexpected end of input, expected ')'".to_string());
+                    return Err(ErrorType::SyntaxError(ErrorInner {
+                        message: "Unexpected end of input, expected ')'".to_string(),
+                        line_number: None,
+                    }));
                 }
             }
         }
@@ -382,7 +403,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses variable declarations
-    pub fn parse_variable_declaration(&mut self) -> Result<Expr, String> {
+    pub fn parse_variable_declaration(&mut self) -> Result<Expr, ErrorType> {
         self.iter.next(); // Consume `Token::Let`
 
         let typ = if let Some(Token::Type(t)) = self.iter.peek() {
@@ -400,10 +421,16 @@ impl<'a> Parser<'a> {
                 Token::Identifier(id) => Some(id),
                 _ => None,
             })
-            .ok_or("Expected identifier after variable type")?;
+            .ok_or(ErrorType::SyntaxError(ErrorInner {
+                message: "Expected identifier after variable type".to_string(),
+                line_number: None,
+            }))?;
 
         if self.iter.next() != Some(&Token::Equals) {
-            return Err("Expected '=' after variable name".to_string());
+            return Err(ErrorType::SyntaxError(ErrorInner {
+                message: "Expected '=' after variable name".to_string(),
+                line_number: None,
+            }));
         }
 
         Ok(Expr::VariableDeclaration(Box::new(VariableDeclaration {
@@ -414,7 +441,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses binary expressions (e.g., addition, multiplication)
-    pub fn parse_binary(&mut self, operators: &[Token]) -> Result<Expr, String> {
+    pub fn parse_binary(&mut self, operators: &[Token]) -> Result<Expr, ErrorType> {
         let mut left = self.parse_primary()?;
 
         while let Some(op) = self.iter.peek() {
@@ -444,10 +471,15 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses general expressions
-    pub fn parse_expr(&mut self) -> Result<Expr, String> {
+    pub fn parse_expr(&mut self) -> Result<Expr, ErrorType> {
         let peek = match self.iter.peek() {
             Some(peek) => peek,
-            None => return Err("Unexpected end of input".to_string()),
+            None => {
+                return Err(ErrorType::SyntaxError(ErrorInner {
+                    message: "Unexpected end of input".to_string(),
+                    line_number: None,
+                }))
+            }
         };
 
         match peek {
@@ -457,7 +489,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses a complete program into an AST
-    pub fn parse(&mut self) -> Result<Ast, String> {
+    pub fn parse(&mut self) -> Result<Ast, ErrorType> {
         let mut ast = Vec::new();
 
         while self.iter.peek().is_some() {
