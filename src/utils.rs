@@ -150,13 +150,17 @@ pub enum ErrorType {
 }
 
 /// Display error to the user in a pretty way
-pub fn display_error(err: ErrorType) {
+pub fn display_error(err: ErrorType, line: Option<usize>) {
+    let line = match line {
+        Some(line) => &format!(" on line {line}:"),
+        None => "",
+    };
     match err {
         ErrorType::SyntaxError(s) => {
-            eprintln!("{} {s}", color("[Syntax Error]", Color::LightRed))
+            eprintln!("{}{line} {s}", color("[Syntax Error]", Color::LightRed),);
         }
         ErrorType::Generic(s) => {
-            eprintln!("{} {s}", color("[Error]", Color::LightRed))
+            eprintln!("{}{line} {s}", color("[Error]", Color::LightRed))
         }
     };
 }

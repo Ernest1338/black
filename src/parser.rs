@@ -197,8 +197,52 @@ pub fn lexer(input: &str) -> Result<Vec<Token>, String> {
     Ok(tokens)
 }
 
+/// Finds expr in the source provided in the argument. Returns a line number as usize
+pub fn expr_to_line_number(expr: &Expr, source: &str) -> Option<usize> {
+    let mut current_line = 1;
+
+    let mut context = String::new();
+
+    // Iterate through the source line by line
+    for line in source.lines() {
+        // Handle line comments and empty lines
+        if line.starts_with("//") || line.is_empty() {
+            current_line += 1;
+            continue;
+        }
+
+        // Handle inline comments
+        let line = line.split("//").collect::<Vec<&str>>()[0];
+
+        // Append context
+        context.push_str(&format!("{line}\n"));
+
+        let context_tokens: Vec<Token> = lexer(&context).unwrap_or_default();
+
+        // Use the parser to parse the tokens of the current context
+        let mut parser = Parser::new(&context_tokens);
+
+        match parser.parse_expr() {
+            Ok(parsed_expr) => {
+                // Clear current context
+                context.clear();
+                // Compare the parsed expression with the given expression
+                if *expr == parsed_expr {
+                    return Some(current_line);
+                }
+            }
+            Err(_) => continue,
+        }
+
+        // Increment current line counter
+        current_line += 1;
+    }
+
+    None
+}
+
 /// Represents a parsed expression in the abstract syntax tree (AST)
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 #[allow(clippy::enum_variant_names)]
 pub enum Expr {
     FuncCall(FuncCall),
@@ -210,7 +254,7 @@ pub enum Expr {
 }
 
 /// Represents a variable declaration in the AST
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct VariableDeclaration {
     pub identifier: String,
     pub typ: Option<Type>,
@@ -218,14 +262,14 @@ pub struct VariableDeclaration {
 }
 
 /// Represents a function call in the AST
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct FuncCall {
     pub name: String,
     pub arguments: Vec<Expr>,
 }
 
 /// Represents a binary expression in the AST
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct BinExpr {
     pub lhs: Expr,
     pub rhs: Expr,
@@ -233,7 +277,7 @@ pub struct BinExpr {
 }
 
 /// Represents kinds of binary operators
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum BinOpKind {
     Plus,
     Minus,
