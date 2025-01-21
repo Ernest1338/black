@@ -337,33 +337,6 @@ impl<'a> Parser<'a> {
         }))
     }
 
-    /// Parses binary expressions (e.g., addition, multiplication)
-    pub fn parse_binary(
-        &mut self,
-        parse_operand: fn(&mut Self) -> Result<Expr, String>,
-        operators: &[Token],
-        make_node: fn(Box<Expr>, BinOpKind, Box<Expr>) -> Expr,
-    ) -> Result<Expr, String> {
-        let mut left = parse_operand(self)?;
-        while let Some(op) = self.iter.peek() {
-            if operators.contains(op) {
-                let operator = match op {
-                    Token::Plus => BinOpKind::Plus,
-                    Token::Minus => BinOpKind::Minus,
-                    Token::Multiply => BinOpKind::Multiply,
-                    Token::Divide => BinOpKind::Divide,
-                    _ => unreachable!(),
-                };
-                self.iter.next(); // Consume operator
-                let right = parse_operand(self)?;
-                left = make_node(Box::new(left), operator, Box::new(right));
-            } else {
-                break;
-            }
-        }
-        Ok(left)
-    }
-
     /// Parses variable declarations
     pub fn parse_variable_declaration(&mut self) -> Result<Expr, String> {
         self.iter.next(); // Consume `Token::Let`
@@ -396,21 +369,44 @@ impl<'a> Parser<'a> {
         })))
     }
 
+    /// Parses binary expressions (e.g., addition, multiplication)
+    pub fn parse_binary(&mut self, operators: &[Token]) -> Result<Expr, String> {
+        let mut left = self.parse_primary()?;
+
+        while let Some(op) = self.iter.peek() {
+            if operators.contains(op) {
+                let operator = match op {
+                    Token::Plus => BinOpKind::Plus,
+                    Token::Minus => BinOpKind::Minus,
+                    Token::Multiply => BinOpKind::Multiply,
+                    Token::Divide => BinOpKind::Divide,
+                    _ => unreachable!(),
+                };
+                self.iter.next(); // Consume operator
+                let right = self.parse_primary()?;
+                left = Expr::BinExpr(Box::new(BinExpr {
+                    lhs: left,
+                    kind: operator,
+                    rhs: right,
+                }));
+            } else {
+                break;
+            }
+        }
+
+        Ok(left)
+    }
+
     /// Parses general expressions
     pub fn parse_expr(&mut self) -> Result<Expr, String> {
-        match self.iter.peek() {
-            Some(Token::Let) => self.parse_variable_declaration(),
-            _ => self.parse_binary(
-                |parser| parser.parse_primary(),
-                &[Token::Multiply, Token::Divide, Token::Plus, Token::Minus],
-                |lhs, kind, rhs| {
-                    Expr::BinExpr(Box::new(BinExpr {
-                        lhs: *lhs,
-                        kind,
-                        rhs: *rhs,
-                    }))
-                },
-            ),
+        let peek = match self.iter.peek() {
+            Some(peek) => peek,
+            None => return Err("Unexpected end of input".to_string()),
+        };
+
+        match peek {
+            Token::Let => self.parse_variable_declaration(),
+            _ => self.parse_binary(&[Token::Multiply, Token::Divide, Token::Plus, Token::Minus]),
         }
     }
 

@@ -145,7 +145,7 @@ fn main() {
     let ast = measure_time("Parsing", || match parser.parse() {
         Ok(ast) => ast,
         Err(err) => {
-            display_error(ErrorType::Generic(err));
+            display_error(ErrorType::SyntaxError(err));
             exit(1);
         }
     });
