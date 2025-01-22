@@ -1,5 +1,8 @@
 use crate::{
-    parser::{type_check, Ast, BinExpr, BinOpKind, FuncCall, Variable, VariableDeclaration},
+    parser::{
+        expr_to_line_number, type_check, Ast, BinExpr, BinOpKind, FuncCall, Variable,
+        VariableDeclaration,
+    },
     utils::{ErrorInner, ErrorType},
     Expr,
 };
@@ -40,20 +43,44 @@ impl Interpreter {
     }
 
     /// Runs the interpreter, processing each expression in the AST
-    pub fn run(&mut self) -> Result<(), ErrorType> {
+    pub fn run(&mut self, source_code: &str) -> Result<(), ErrorType> {
         let ast = self.ast.clone();
 
         for node in &ast {
             match node {
-                Expr::FuncCall(func_call) => self.handle_func_call(func_call)?,
+                Expr::FuncCall(func_call) => match self.handle_func_call(func_call) {
+                    Ok(_) => (),
+                    Err(message) => {
+                        return Err(ErrorType::Generic(ErrorInner {
+                            message,
+                            line_number: expr_to_line_number(node, source_code),
+                        }))
+                    }
+                },
                 Expr::VariableDeclaration(variable_declaration) => {
-                    self.handle_var_decl(variable_declaration)?
+                    match self.handle_var_decl(variable_declaration) {
+                        Ok(_) => (),
+                        Err(message) => {
+                            return Err(ErrorType::Generic(ErrorInner {
+                                message,
+                                line_number: expr_to_line_number(node, source_code),
+                            }))
+                        }
+                    }
                 }
                 Expr::Identifier(id) => {
                     // If it's a valid variable, print it
                     // Probably only useful in the interactive mode
                     // Should we only restrict this code to such condition?
-                    let var = self.get_var(id)?;
+                    let var = match self.get_var(id) {
+                        Ok(var) => var,
+                        Err(message) => {
+                            return Err(ErrorType::Generic(ErrorInner {
+                                message,
+                                line_number: expr_to_line_number(node, source_code),
+                            }))
+                        }
+                    };
                     println!("{var}");
                 }
                 _ => {
@@ -61,7 +88,7 @@ impl Interpreter {
                         message: format!(
                             "Expression `{node:?}` in this context is not yet implemented"
                         ),
-                        line_number: None,
+                        line_number: expr_to_line_number(node, source_code),
                     }))
                 }
             }
@@ -71,39 +98,30 @@ impl Interpreter {
     }
 
     /// Retrieves the value of a variable, or exits with an error if it doesn't exist
-    fn get_var(&self, ident: &str) -> Result<Variable, ErrorType> {
+    fn get_var(&self, ident: &str) -> Result<Variable, String> {
         if self.variables.contains_key(ident) {
             if let Some(s) = self.variables.get(ident) {
                 return Ok(s.clone());
             }
         }
-        Err(ErrorType::SyntaxError(ErrorInner {
-            message: format!("Variable doesn't exist: `{ident}`"),
-            line_number: None,
-        }))
+        Err(format!("Variable doesn't exist: `{ident}`"))
     }
 
     /// Evaluates an operand
-    fn eval_operand(&self, operand: &Expr) -> Result<i64, ErrorType> {
+    fn eval_operand(&self, operand: &Expr) -> Result<i64, String> {
         match operand {
             Expr::BinExpr(bin_expr) => Ok(self.handle_bin_expr(bin_expr)?),
             Expr::Number(n) => Ok(*n),
             Expr::Identifier(id) => match self.get_var(id)? {
                 Variable::Number(n) => Ok(n),
-                _ => Err(ErrorType::Generic(ErrorInner {
-                    message: "Cannot add variable which is not a number".to_string(),
-                    line_number: None,
-                })),
+                _ => Err("Cannot add variable which is not a number".to_string()),
             },
-            _ => Err(ErrorType::Generic(ErrorInner {
-                message: "Cannot add variable which is not a number".to_string(),
-                line_number: None,
-            })),
+            _ => Err("Cannot add variable which is not a number".to_string()),
         }
     }
 
     /// Handles the evaluation of a binary expression, returning the result of the operation
-    fn handle_bin_expr(&self, bin_expr: &BinExpr) -> Result<i64, ErrorType> {
+    fn handle_bin_expr(&self, bin_expr: &BinExpr) -> Result<i64, String> {
         let lhs = self.eval_operand(&bin_expr.lhs)?;
         let rhs = self.eval_operand(&bin_expr.rhs)?;
 
@@ -116,15 +134,12 @@ impl Interpreter {
     }
 
     /// Handles function calls
-    fn handle_func_call(&self, func_call: &FuncCall) -> Result<(), ErrorType> {
+    fn handle_func_call(&self, func_call: &FuncCall) -> Result<(), String> {
         match func_call.name.as_ref() {
             "print" => self.handle_print(func_call)?,
             _ => {
                 // TODO: handle user defined functions
-                return Err(ErrorType::Generic(ErrorInner {
-                    message: format!("Function `{}` is not implemented", &func_call.name),
-                    line_number: None,
-                }));
+                return Err(format!("Function `{}` is not implemented", &func_call.name));
             }
         }
 
@@ -132,7 +147,7 @@ impl Interpreter {
     }
 
     /// Handles the `print` function call
-    fn handle_print(&self, func_call: &FuncCall) -> Result<(), ErrorType> {
+    fn handle_print(&self, func_call: &FuncCall) -> Result<(), String> {
         let args = func_call.arguments.iter();
         let args_count = args.len();
         for (i, arg) in args.enumerate() {
@@ -143,10 +158,7 @@ impl Interpreter {
                 Expr::Identifier(id) => print!("{}", self.get_var(id)?),
                 Expr::StringLiteral(s) => print!("{s}"),
                 _ => {
-                    return Err(ErrorType::Generic(ErrorInner {
-                        message: "Invalid argument to print".to_string(),
-                        line_number: None,
-                    }))
+                    return Err("Invalid argument to print".to_string());
                 }
             }
             if i != args_count - 1 {
@@ -164,13 +176,12 @@ impl Interpreter {
     fn handle_var_decl(
         &mut self,
         variable_declaration: &VariableDeclaration,
-    ) -> Result<(), ErrorType> {
+    ) -> Result<(), String> {
         if let Some(var_type) = &variable_declaration.typ {
             if !type_check(var_type, &variable_declaration.value) {
-                return Err(ErrorType::Generic(ErrorInner {
-                    message: format!("Variable type `{var_type}` does not match value type",),
-                    line_number: None,
-                }));
+                return Err(format!(
+                    "Variable type `{var_type}` does not match value type"
+                ));
             }
         }
 
@@ -181,10 +192,7 @@ impl Interpreter {
                 Expr::StringLiteral(s) => Variable::StringLiteral(s.to_owned()),
                 Expr::BinExpr(bin_expr) => Variable::Number(self.handle_bin_expr(bin_expr)?),
                 _ => {
-                    return Err(ErrorType::Generic(ErrorInner {
-                        message: "Can only store strings and number in variables".to_string(),
-                        line_number: None,
-                    }));
+                    return Err("Can only store strings and number in variables".to_string());
                 }
             },
         );

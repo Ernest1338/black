@@ -1,7 +1,9 @@
 #![allow(dead_code)]
 
 use crate::{
-    parser::{type_check, Ast, BinExpr, FuncCall, Variable, VariableDeclaration, expr_to_line_number},
+    parser::{
+        expr_to_line_number, type_check, Ast, BinExpr, FuncCall, Variable, VariableDeclaration,
+    },
     utils::{dbg, dbg_plain, escape_string, get_tmp_fname, measure_time, ErrorInner, ErrorType},
     Expr,
 };
@@ -67,13 +69,11 @@ impl Compiler {
     }
 
     /// Retrieves a variable by its identifier, returning it or exiting with an error if not found
-    fn get_var(&self, ident: &str) -> Result<Variable, ErrorType> {
-        let err = ErrorType::SyntaxError(ErrorInner {
-            message: format!("Variable doesn't exist: `{ident}`"),
-            line_number: None,
-        });
-
-        self.variables.get(ident).cloned().ok_or(err)
+    fn get_var(&self, ident: &str) -> Result<Variable, String> {
+        self.variables
+            .get(ident)
+            .cloned()
+            .ok_or(format!("Variable doesn't exist: `{ident}`"))
     }
 
     /// Increments and returns the primary key, used for generating unique variable labels
@@ -88,22 +88,17 @@ impl Compiler {
     }
 
     /// Handles a function call by dispatching to the appropriate handler
-    fn handle_func_call(&mut self, func_call: &FuncCall) -> Result<(), ErrorType> {
+    fn handle_func_call(&mut self, func_call: &FuncCall) -> Result<(), String> {
         match func_call.name.as_ref() {
             "print" => self.handle_print(func_call)?,
-            _ => {
-                return Err(ErrorType::Generic(ErrorInner {
-                    message: format!("Function `{}` is not implemented", func_call.name),
-                    line_number: None,
-                }))
-            }
+            _ => return Err(format!("Function `{}` is not implemented", func_call.name)),
         }
 
         Ok(())
     }
 
     /// Handles the `print` function call by generating IR to print its arguments
-    fn handle_print(&mut self, func_call: &FuncCall) -> Result<(), ErrorType> {
+    fn handle_print(&mut self, func_call: &FuncCall) -> Result<(), String> {
         let args = func_call.arguments.iter();
         let args_count = args.len();
         for (i, arg) in args.enumerate() {
@@ -143,10 +138,7 @@ impl Compiler {
                 }
 
                 _ => {
-                    return Err(ErrorType::Generic(ErrorInner {
-                        message: "Invalid argument to print".to_string(),
-                        line_number: None,
-                    }));
+                    return Err("Invalid argument to print".to_string());
                 }
             }
 
@@ -171,7 +163,7 @@ impl Compiler {
     }
 
     /// Evaluates an operand expression and returns its result temporary variable
-    fn eval_operand(&mut self, operand: &Expr) -> Result<String, ErrorType> {
+    fn eval_operand(&mut self, operand: &Expr) -> Result<String, String> {
         let pk = self.next_pk();
         match operand {
             Expr::Number(n) => Ok(n.to_string()),
@@ -183,16 +175,13 @@ impl Compiler {
 
             Expr::BinExpr(bin_expr) => self.handle_bin_expr(bin_expr),
 
-            _ => Err(ErrorType::Generic(ErrorInner {
-                message: "Cannot add variable which is not a number".to_string(),
-                line_number: None,
-            })),
+            _ => Err("Cannot add variable which is not a number".to_string()),
         }
     }
 
     /// Handles a binary expression and generates corresponding IR. Returns temporary variable
     /// containing the equation result
-    fn handle_bin_expr(&mut self, bin_expr: &BinExpr) -> Result<String, ErrorType> {
+    fn handle_bin_expr(&mut self, bin_expr: &BinExpr) -> Result<String, String> {
         let lhs = self.eval_operand(&bin_expr.lhs)?;
         let rhs = self.eval_operand(&bin_expr.rhs)?;
         let pk = self.next_pk();
@@ -210,15 +199,14 @@ impl Compiler {
     fn handle_var_decl(
         &mut self,
         variable_declaration: &VariableDeclaration,
-    ) -> Result<(), ErrorType> {
+    ) -> Result<(), String> {
         let var_label = format!("${}", variable_declaration.identifier);
 
         if let Some(var_type) = &variable_declaration.typ {
             if !type_check(var_type, &variable_declaration.value) {
-                return Err(ErrorType::Generic(ErrorInner {
-                    message: format!("Variable type `{var_type}` does not match value type",),
-                    line_number: None,
-                }));
+                return Err(format!(
+                    "Variable type `{var_type}` does not match value type",
+                ));
             }
         }
 
@@ -250,10 +238,7 @@ impl Compiler {
             }
 
             _ => {
-                return Err(ErrorType::Generic(ErrorInner {
-                    message: "Can only store strings and numbers in variables".to_string(),
-                    line_number: None,
-                }));
+                return Err("Can only store strings and numbers in variables".to_string());
             }
         };
 
@@ -264,17 +249,33 @@ impl Compiler {
     }
 
     /// Generates the intermediate representation (IR) for the AST and returns it as a string
-    pub fn generate_ir(&mut self) -> Result<String, ErrorType> {
+    pub fn generate_ir(&mut self, source_code: &str) -> Result<String, ErrorType> {
         self.ir.push_str("export function w $main() {\n@start\n");
 
         let ast = self.ast.clone();
 
         for node in &ast {
             match node {
-                Expr::FuncCall(func_call) => self.handle_func_call(func_call)?,
+                Expr::FuncCall(func_call) => match self.handle_func_call(func_call) {
+                    Ok(_) => (),
+                    Err(message) => {
+                        return Err(ErrorType::Generic(ErrorInner {
+                            message,
+                            line_number: expr_to_line_number(node, source_code),
+                        }));
+                    }
+                },
 
                 Expr::VariableDeclaration(variable_declaration) => {
-                    self.handle_var_decl(variable_declaration)?
+                    match self.handle_var_decl(variable_declaration) {
+                        Ok(_) => (),
+                        Err(message) => {
+                            return Err(ErrorType::Generic(ErrorInner {
+                                message,
+                                line_number: expr_to_line_number(node, source_code),
+                            }))
+                        }
+                    }
                 }
 
                 _ => {
@@ -282,7 +283,7 @@ impl Compiler {
                         message: format!(
                             "Expression `{node:?}` in this context is not yet implemented"
                         ),
-                        line_number: None,
+                        line_number: expr_to_line_number(node, source_code),
                     }));
                 }
             }
@@ -295,8 +296,12 @@ impl Compiler {
 
     /// Compiles the AST by generating IR, running it through the `qbe` compiler, and then
     /// assembling and linking the output with `cc` to produce the final executable
-    pub fn compile(&mut self, output_file: PathBuf) -> Result<(), ErrorType> {
-        let ir = format!("{}{}", include_str!("ext.ssa"), self.generate_ir()?);
+    pub fn compile(&mut self, source_code: &str, output_file: PathBuf) -> Result<(), ErrorType> {
+        let ir = format!(
+            "{}{}",
+            include_str!("ext.ssa"),
+            self.generate_ir(source_code)?
+        );
 
         dbg("Variables", &self.variables);
         dbg_plain("Compiled IR", &ir);

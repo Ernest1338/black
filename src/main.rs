@@ -1,7 +1,6 @@
 use crate::{
     compiler::Compiler,
     interpreter::Interpreter,
-    parser::expr_to_line_number,
     utils::{display_error, display_error_stdout, ErrorInner, ErrorType},
 };
 use std::{
@@ -11,7 +10,8 @@ use std::{
 };
 
 // TODO:
-// - line numbers in errors
+// - line numbers in parser errors
+// - more test cases for error returns
 // - if, else expr
 // - fn expr
 // - type checker
@@ -100,7 +100,7 @@ fn main() {
             // Clear last line
             print!("\x1b[1A\x1b[2K");
 
-            let res = interpreter.run();
+            let res = interpreter.run(&input);
             if let Err(err) = res {
                 display_error_stdout(err);
             }
@@ -111,7 +111,7 @@ fn main() {
     // Reading source code
     // -------------------
     let orig_source_code = match args.input {
-        Some(input) => match read_to_string(input) {
+        Some(ref input) => match read_to_string(input) {
             Ok(input) => input,
             Err(_) => {
                 display_error(ErrorType::Generic(ErrorInner {
@@ -160,7 +160,7 @@ fn main() {
         // -----------
         let mut interpreter = Interpreter::from_ast(ast);
         measure_time("Interpreter Execution", || {
-            if let Err(err) = interpreter.run() {
+            if let Err(err) = interpreter.run(&orig_source_code) {
                 display_error(err);
                 exit(1);
             }
@@ -171,7 +171,7 @@ fn main() {
         // ---------------
         let mut compiler = Compiler::from_ast(ast);
         measure_time("Full Compiler Execution", || {
-            if let Err(err) = compiler.compile(args.output.clone()) {
+            if let Err(err) = compiler.compile(&orig_source_code, args.output.clone()) {
                 display_error(err);
                 exit(1);
             }
@@ -192,7 +192,7 @@ fn main() {
         // --------
         let mut compiler = Compiler::from_ast(ast);
         measure_time("Full Compiler Execution", || {
-            if let Err(err) = compiler.compile(args.output) {
+            if let Err(err) = compiler.compile(&orig_source_code, args.output.clone()) {
                 display_error(err);
                 exit(1);
             }

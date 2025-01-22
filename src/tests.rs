@@ -133,7 +133,7 @@ fn get_compiler_res(code: &str) -> Result<(), ErrorType> {
     let mut compiler = Compiler::from_ast(ast);
     let bin_fname = get_tmp_fname("blkbin");
 
-    compiler.compile(bin_fname.into())
+    compiler.compile(&code, bin_fname.into())
 }
 
 fn get_interpreter_res(code: &str) -> Result<(), ErrorType> {
@@ -156,7 +156,7 @@ fn get_interpreter_res(code: &str) -> Result<(), ErrorType> {
     // Interpreter
     let mut interpreter = Interpreter::from_ast(ast);
 
-    interpreter.run()
+    interpreter.run(&code)
 }
 
 fn assert_error(result: Result<(), ErrorType>, expected: &ErrorType) {
@@ -436,7 +436,7 @@ fn err_unknown_func() {
     let code = r#"prnt("test")"#;
     let expected = ErrorType::Generic(ErrorInner {
         message: "Function `prnt` is not implemented".to_string(),
-        line_number: None,
+        line_number: Some(1),
     });
 
     assert_error(get_compiler_res(code), &expected);
@@ -446,9 +446,9 @@ fn err_unknown_func() {
 #[test]
 fn err_variable_doesnt_exist() {
     let code = r#"print(a)"#;
-    let expected = ErrorType::SyntaxError(ErrorInner {
+    let expected = ErrorType::Generic(ErrorInner {
         message: "Variable doesn't exist: `a`".to_string(),
-        line_number: None,
+        line_number: Some(1),
     });
 
     assert_error(get_compiler_res(code), &expected);
@@ -460,7 +460,7 @@ fn err_invalid_print_arg() {
     let code = r#"print(let a = 2)"#;
     let expected = ErrorType::Generic(ErrorInner {
         message: "Invalid argument to print".to_string(),
-        line_number: None,
+        line_number: Some(1),
     });
 
     assert_error(get_compiler_res(code), &expected);
@@ -472,7 +472,7 @@ fn err_add_not_num() {
     let code = r#"print(1+"")"#;
     let expected = ErrorType::Generic(ErrorInner {
         message: "Cannot add variable which is not a number".to_string(),
-        line_number: None,
+        line_number: Some(1),
     });
 
     assert_error(get_compiler_res(code), &expected);
@@ -484,7 +484,7 @@ fn err_invalid_expr_type() {
     let code = r#"1"#;
     let expected = ErrorType::Generic(ErrorInner {
         message: "Expression `Number(1)` in this context is not yet implemented".to_string(),
-        line_number: None,
+        line_number: Some(1),
     });
 
     assert_error(get_compiler_res(code), &expected);
@@ -496,7 +496,7 @@ fn err_var_type_str_but_not_str() {
     let code = r#"let str a = 1"#;
     let expected = ErrorType::Generic(ErrorInner {
         message: "Variable type `str` does not match value type".to_string(),
-        line_number: None,
+        line_number: Some(1),
     });
 
     assert_error(get_compiler_res(code), &expected);
