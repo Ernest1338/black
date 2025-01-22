@@ -1,3 +1,4 @@
+use crate::parser::{expr_to_line_number, Expr};
 use std::{
     env,
     fmt::{Debug, Display},
@@ -210,4 +211,19 @@ pub fn display_error_stdout(err: ErrorType) {
 /// Escapes backslashes and double quotes in a string for safe inclusion in string literals
 pub fn escape_string(s: &str) -> String {
     s.replace("\\", "\\\\").replace("\"", "\\\"")
+}
+
+/// TODO
+pub fn map_line_nr<T>(
+    result: Result<T, String>,
+    node: &Expr,
+    source_code: &str,
+) -> Result<T, ErrorType> {
+    match result {
+        Ok(value) => Ok(value),
+        Err(message) => Err(ErrorType::Generic(ErrorInner {
+            message,
+            line_number: expr_to_line_number(node, source_code),
+        })),
+    }
 }

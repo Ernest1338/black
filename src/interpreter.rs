@@ -3,7 +3,7 @@ use crate::{
         expr_to_line_number, type_check, Ast, BinExpr, BinOpKind, FuncCall, Variable,
         VariableDeclaration,
     },
-    utils::{ErrorInner, ErrorType},
+    utils::{map_line_nr, ErrorInner, ErrorType},
     Expr,
 };
 use std::{collections::HashMap, fmt};
@@ -48,39 +48,19 @@ impl Interpreter {
 
         for node in &ast {
             match node {
-                Expr::FuncCall(func_call) => match self.handle_func_call(func_call) {
-                    Ok(_) => (),
-                    Err(message) => {
-                        return Err(ErrorType::Generic(ErrorInner {
-                            message,
-                            line_number: expr_to_line_number(node, source_code),
-                        }))
-                    }
-                },
-                Expr::VariableDeclaration(variable_declaration) => {
-                    match self.handle_var_decl(variable_declaration) {
-                        Ok(_) => (),
-                        Err(message) => {
-                            return Err(ErrorType::Generic(ErrorInner {
-                                message,
-                                line_number: expr_to_line_number(node, source_code),
-                            }))
-                        }
-                    }
+                Expr::FuncCall(func_call) => {
+                    map_line_nr(self.handle_func_call(func_call), node, source_code)?
                 }
+                Expr::VariableDeclaration(variable_declaration) => map_line_nr(
+                    self.handle_var_decl(variable_declaration),
+                    node,
+                    source_code,
+                )?,
                 Expr::Identifier(id) => {
                     // If it's a valid variable, print it
                     // Probably only useful in the interactive mode
                     // Should we only restrict this code to such condition?
-                    let var = match self.get_var(id) {
-                        Ok(var) => var,
-                        Err(message) => {
-                            return Err(ErrorType::Generic(ErrorInner {
-                                message,
-                                line_number: expr_to_line_number(node, source_code),
-                            }))
-                        }
-                    };
+                    let var = map_line_nr(self.get_var(id), node, source_code)?;
                     println!("{var}");
                 }
                 _ => {

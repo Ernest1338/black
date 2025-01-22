@@ -4,7 +4,10 @@ use crate::{
     parser::{
         expr_to_line_number, type_check, Ast, BinExpr, FuncCall, Variable, VariableDeclaration,
     },
-    utils::{dbg, dbg_plain, escape_string, get_tmp_fname, measure_time, ErrorInner, ErrorType},
+    utils::{
+        dbg, dbg_plain, escape_string, get_tmp_fname, map_line_nr, measure_time, ErrorInner,
+        ErrorType,
+    },
     Expr,
 };
 use std::{
@@ -256,27 +259,15 @@ impl Compiler {
 
         for node in &ast {
             match node {
-                Expr::FuncCall(func_call) => match self.handle_func_call(func_call) {
-                    Ok(_) => (),
-                    Err(message) => {
-                        return Err(ErrorType::Generic(ErrorInner {
-                            message,
-                            line_number: expr_to_line_number(node, source_code),
-                        }));
-                    }
-                },
-
-                Expr::VariableDeclaration(variable_declaration) => {
-                    match self.handle_var_decl(variable_declaration) {
-                        Ok(_) => (),
-                        Err(message) => {
-                            return Err(ErrorType::Generic(ErrorInner {
-                                message,
-                                line_number: expr_to_line_number(node, source_code),
-                            }))
-                        }
-                    }
+                Expr::FuncCall(func_call) => {
+                    map_line_nr(self.handle_func_call(func_call), node, source_code)?
                 }
+
+                Expr::VariableDeclaration(variable_declaration) => map_line_nr(
+                    self.handle_var_decl(variable_declaration),
+                    node,
+                    source_code,
+                )?,
 
                 _ => {
                     return Err(ErrorType::Generic(ErrorInner {
