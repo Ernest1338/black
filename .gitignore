@@ -1,5 +1,7 @@
 /target
 out.app
+debug.ir
+debug.asm
 
 # Hugo
 docs/public/

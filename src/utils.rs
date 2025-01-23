@@ -2,6 +2,7 @@ use crate::parser::{expr_to_line_number, Expr};
 use std::{
     env,
     fmt::{Debug, Display},
+    fs::OpenOptions,
     io::{stdout, Write},
     time::{Instant, SystemTime, UNIX_EPOCH},
 };
@@ -163,47 +164,35 @@ fn get_line_nr_str(line_nr: Option<usize>) -> String {
     }
 }
 
-/// Display error to the user in a pretty way
-pub fn display_error(err: ErrorType) {
-    match err {
-        ErrorType::SyntaxError(inner) => {
-            eprintln!(
-                "{}{} {}",
-                color("[Syntax Error]", Color::LightRed),
-                get_line_nr_str(inner.line_number),
-                inner.message
-            );
-        }
-        ErrorType::Generic(inner) => {
-            eprintln!(
-                "{}{} {}",
-                color("[Error]", Color::LightRed),
-                get_line_nr_str(inner.line_number),
-                inner.message
-            );
-        }
-    };
+#[derive(Debug, PartialEq)]
+pub enum Output {
+    Stdout,
+    Stderr,
 }
 
-// FIXME code duplication
 /// Display error to the user in a pretty way
-pub fn display_error_stdout(err: ErrorType) {
+pub fn display_error(err: ErrorType, target: Output) {
+    let output_fn = match target {
+        Output::Stdout => |msg| println!("{msg}"),
+        Output::Stderr => |msg| eprintln!("{msg}"),
+    };
+
     match err {
         ErrorType::SyntaxError(inner) => {
-            println!(
+            output_fn(&format!(
                 "{}{} {}",
                 color("[Syntax Error]", Color::LightRed),
                 get_line_nr_str(inner.line_number),
                 inner.message
-            );
+            ));
         }
         ErrorType::Generic(inner) => {
-            println!(
+            output_fn(&format!(
                 "{}{} {}",
                 color("[Error]", Color::LightRed),
                 get_line_nr_str(inner.line_number),
                 inner.message
-            );
+            ));
         }
     };
 }
@@ -213,7 +202,7 @@ pub fn escape_string(s: &str) -> String {
     s.replace("\\", "\\\\").replace("\"", "\\\"")
 }
 
-/// TODO
+/// Maps a result to include line number information in errors
 pub fn map_line_nr<T>(
     result: Result<T, String>,
     node: &Expr,
@@ -225,5 +214,19 @@ pub fn map_line_nr<T>(
             message,
             line_number: expr_to_line_number(node, source_code),
         })),
+    }
+}
+
+/// Writes data to a file if the given environment variable is set
+pub fn dbg_file_if_env(data: &str, file: &str, var: &str) {
+    if env::var(var).is_ok() {
+        OpenOptions::new()
+            .write(true)
+            .create(true)
+            .truncate(true)
+            .open(file)
+            .unwrap()
+            .write_all(data.as_bytes())
+            .unwrap();
     }
 }

@@ -5,8 +5,8 @@ use crate::{
         expr_to_line_number, type_check, Ast, BinExpr, FuncCall, Variable, VariableDeclaration,
     },
     utils::{
-        dbg, dbg_plain, escape_string, get_tmp_fname, map_line_nr, measure_time, ErrorInner,
-        ErrorType,
+        dbg, dbg_file_if_env, dbg_plain, escape_string, get_tmp_fname, map_line_nr, measure_time,
+        ErrorInner, ErrorType,
     },
     Expr,
 };
@@ -296,6 +296,7 @@ impl Compiler {
 
         dbg("Variables", &self.variables);
         dbg_plain("Compiled IR", &ir);
+        dbg_file_if_env(&ir, "debug.ir", "SAVE_IR");
 
         let out_file_str = output_file.to_str().expect("invalid output file");
 
@@ -336,6 +337,7 @@ impl Compiler {
         });
 
         dbg("QBE output", &qbe_output);
+        dbg_file_if_env(&qbe_output, "debug.asm", "SAVE_ASM");
 
         let mut cc_output = String::new();
 
