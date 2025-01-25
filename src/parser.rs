@@ -182,7 +182,7 @@ pub fn preprocess(code: &str) -> String {
 /// Converts input text into a vector of tokens
 pub fn lexer(input: &str) -> Result<Vec<Token>, ErrorType> {
     let mut tokens = Vec::new();
-    for line in input.lines() {
+    for (line_nr, line) in input.lines().enumerate() {
         let mut remaining = line.trim();
         while !remaining.is_empty() {
             match Token::from_str(remaining) {
@@ -194,7 +194,7 @@ pub fn lexer(input: &str) -> Result<Vec<Token>, ErrorType> {
                 Err(_) => {
                     return Err(ErrorType::SyntaxError(ErrorInner {
                         message: format!("Unexpected token: {remaining}"),
-                        line_number: None,
+                        line_number: Some(line_nr + 1),
                     }))
                 }
             }
