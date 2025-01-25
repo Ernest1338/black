@@ -1,6 +1,7 @@
 use crate::{
     compiler::Compiler,
     interpreter::Interpreter,
+    parser::get_parser_line_number,
     utils::{display_error, ErrorInner, ErrorType, Output},
 };
 use std::{
@@ -151,7 +152,17 @@ fn main() {
     let ast = measure_time("Parsing", || match parser.parse() {
         Ok(ast) => ast,
         Err(err) => {
-            display_error(err, Output::Stderr);
+            let message = match err {
+                ErrorType::SyntaxError(e) => e.message,
+                _ => "".to_string(),
+            };
+            display_error(
+                ErrorType::SyntaxError(ErrorInner {
+                    message,
+                    line_number: get_parser_line_number(&orig_source_code),
+                }),
+                Output::Stderr,
+            );
             exit(1);
         }
     });

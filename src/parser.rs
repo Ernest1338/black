@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 use crate::utils::{ErrorInner, ErrorType};
-use std::{fmt, iter::Peekable, str::FromStr};
+use std::{fmt, iter::Peekable, slice::Iter, str::FromStr};
 
 /// Represents different token types for the lexer
 #[derive(Debug, PartialEq, Clone)]
@@ -176,12 +176,13 @@ pub fn preprocess(code: &str) -> String {
         .filter(|l| !l.starts_with("//"))
         .map(|l| l.split("//").next().unwrap())
         .collect::<Vec<&str>>()
-        .join(" ")
+        .join("\n")
 }
 
 /// Converts input text into a vector of tokens
 pub fn lexer(input: &str) -> Result<Vec<Token>, ErrorType> {
     let mut tokens = Vec::new();
+
     for (line_nr, line) in input.lines().enumerate() {
         let mut remaining = line.trim();
         while !remaining.is_empty() {
@@ -200,6 +201,7 @@ pub fn lexer(input: &str) -> Result<Vec<Token>, ErrorType> {
             }
         }
     }
+
     Ok(tokens)
 }
 
@@ -245,6 +247,51 @@ pub fn expr_to_line_number(expr: &Expr, source: &str) -> Option<usize> {
     }
 
     None
+}
+
+pub fn get_parser_line_number(source: &str) -> Option<usize> {
+    let mut current_line = 1;
+    let mut context = String::new();
+
+    // Iterate through the source line by line
+    for line in source.lines() {
+        // Handle line comments and empty lines
+        if line.starts_with("//") || line.is_empty() {
+            current_line += 1;
+            continue;
+        }
+
+        // Handle inline comments
+        let line = line.split("//").collect::<Vec<&str>>()[0];
+
+        // Append context
+        context.push_str(&format!("{line}\n"));
+
+        // Tokenize the context
+        let context_tokens = match lexer(&context) {
+            Ok(tokens) => tokens,
+            Err(_) => return Some(current_line), // Return current line if lexer fails
+        };
+
+        // Use the parser to parse the tokens of the current context
+        let mut parser = Parser::new(&context_tokens);
+
+        match parser.parse() {
+            Ok(_) => {
+                // Clear current context if parsing succeeds
+                context.clear();
+            }
+            Err(_) => {
+                // Return the current line where parsing fails
+                return Some(current_line);
+            }
+        }
+
+        // Increment current line counter
+        current_line += 1;
+    }
+
+    None // Return None if no error line is found
 }
 
 /// Represents a parsed expression in the abstract syntax tree (AST)
@@ -316,23 +363,23 @@ pub type Ast = Vec<Expr>;
 
 /// Parses tokens into expressions and builds an AST
 pub struct Parser<'a> {
-    iter: Peekable<std::slice::Iter<'a, Token>>,
+    tokens: Peekable<Iter<'a, Token>>,
 }
 
 impl<'a> Parser<'a> {
     /// Creates a new parser instance from a list of tokens
     pub fn new(tokens: &'a [Token]) -> Self {
         Parser {
-            iter: tokens.iter().peekable(),
+            tokens: tokens.iter().peekable(),
         }
     }
 
     /// Parses primary expressions (numbers, identifiers, etc.)
     pub fn parse_primary(&mut self) -> Result<Expr, ErrorType> {
-        match self.iter.next() {
+        match self.tokens.next() {
             Some(Token::Number(n)) => Ok(Expr::Number(*n)),
             Some(Token::Identifier(name)) => {
-                if let Some(Token::LeftParen) = self.iter.peek() {
+                if let Some(Token::LeftParen) = self.tokens.peek() {
                     self.parse_func_call(name)
                 } else {
                     Ok(Expr::Identifier(name.to_owned()))
@@ -341,7 +388,7 @@ impl<'a> Parser<'a> {
             Some(Token::StringLiteral(s)) => Ok(Expr::StringLiteral(s.to_owned())), // Handle StringLiteral
             Some(Token::LeftParen) => {
                 let expr = self.parse_expr()?;
-                if self.iter.next() != Some(&Token::RightParen) {
+                if self.tokens.next() != Some(&Token::RightParen) {
                     return Err(ErrorType::SyntaxError(ErrorInner {
                         message: "Expected ')'".to_string(),
                         line_number: None,
@@ -365,7 +412,7 @@ impl<'a> Parser<'a> {
         let mut args = Vec::new();
 
         // Consume the opening parenthesis '('
-        if self.iter.next() != Some(&Token::LeftParen) {
+        if self.tokens.next() != Some(&Token::LeftParen) {
             return Err(ErrorType::SyntaxError(ErrorInner {
                 message: "Expected '(' after function name".to_string(),
                 line_number: None,
@@ -374,13 +421,13 @@ impl<'a> Parser<'a> {
 
         // Parse arguments until a closing parenthesis ')'
         loop {
-            match self.iter.peek() {
+            match self.tokens.peek() {
                 Some(Token::RightParen) => {
-                    self.iter.next(); // Consume the closing parenthesis ')'
+                    self.tokens.next(); // Consume the closing parenthesis ')'
                     break; // Exit the loop after finding the closing parenthesis
                 }
                 Some(Token::Comma) => {
-                    self.iter.next(); // Consume the comma and continue parsing arguments
+                    self.tokens.next(); // Consume the comma and continue parsing arguments
                 }
                 Some(_) => {
                     // Parse the next argument in the function call
@@ -404,18 +451,18 @@ impl<'a> Parser<'a> {
 
     /// Parses variable declarations
     pub fn parse_variable_declaration(&mut self) -> Result<Expr, ErrorType> {
-        self.iter.next(); // Consume `Token::Let`
+        self.tokens.next(); // Consume `Token::Let`
 
-        let typ = if let Some(Token::Type(t)) = self.iter.peek() {
+        let typ = if let Some(Token::Type(t)) = self.tokens.peek() {
             let t = t.clone();
-            self.iter.next(); // Consume the type token
+            self.tokens.next(); // Consume the type token
             Some(t)
         } else {
             None
         };
 
         let identifier = self
-            .iter
+            .tokens
             .next()
             .and_then(|token| match token {
                 Token::Identifier(id) => Some(id),
@@ -426,7 +473,7 @@ impl<'a> Parser<'a> {
                 line_number: None,
             }))?;
 
-        if self.iter.next() != Some(&Token::Equals) {
+        if self.tokens.next() != Some(&Token::Equals) {
             return Err(ErrorType::SyntaxError(ErrorInner {
                 message: "Expected '=' after variable name".to_string(),
                 line_number: None,
@@ -444,7 +491,7 @@ impl<'a> Parser<'a> {
     pub fn parse_binary(&mut self, operators: &[Token]) -> Result<Expr, ErrorType> {
         let mut left = self.parse_primary()?;
 
-        while let Some(op) = self.iter.peek() {
+        while let Some(op) = self.tokens.peek() {
             if operators.contains(op) {
                 let operator = match op {
                     Token::Plus => BinOpKind::Plus,
@@ -453,7 +500,7 @@ impl<'a> Parser<'a> {
                     Token::Divide => BinOpKind::Divide,
                     _ => unreachable!(),
                 };
-                self.iter.next(); // Consume operator
+                self.tokens.next(); // Consume operator
 
                 let right = self.parse_primary()?;
 
@@ -472,7 +519,7 @@ impl<'a> Parser<'a> {
 
     /// Parses general expressions
     pub fn parse_expr(&mut self) -> Result<Expr, ErrorType> {
-        let peek = match self.iter.peek() {
+        let peek = match self.tokens.peek() {
             Some(peek) => peek,
             None => {
                 return Err(ErrorType::SyntaxError(ErrorInner {
@@ -492,7 +539,7 @@ impl<'a> Parser<'a> {
     pub fn parse(&mut self) -> Result<Ast, ErrorType> {
         let mut ast = Vec::new();
 
-        while self.iter.peek().is_some() {
+        while self.tokens.peek().is_some() {
             let expr = self.parse_expr()?;
             ast.push(expr);
         }
