@@ -10,7 +10,6 @@ use std::{
 };
 
 // TODO:
-// - option in the cli to compile statically (add -static to gcc cmd)
 // - line numbers in parser errors
 // - more test cases for error returns
 // - if, else expr
