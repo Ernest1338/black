@@ -133,7 +133,16 @@ fn get_compiler_res(code: &str) -> Result<(), ErrorType> {
     let mut compiler = Compiler::from_ast(ast);
     let bin_fname = get_tmp_fname("blkbin");
 
-    compiler.compile(&code, bin_fname.into())
+    compiler.compile(
+        &AppArgs {
+            output: bin_fname.into(),
+            static_link: false,
+            interpreter: false,
+            build_and_run: false,
+            input: None,
+        },
+        &code,
+    )
 }
 
 fn get_interpreter_res(code: &str) -> Result<(), ErrorType> {
@@ -388,6 +397,7 @@ fn args_interpreter() {
                 input: Some(PathBuf::from("input")),
                 interpreter: true,
                 build_and_run: false,
+                static_link: false,
                 output: PathBuf::from("out.app")
             }
     );
@@ -402,6 +412,7 @@ fn args_compiler_out() {
                 input: None,
                 interpreter: false,
                 build_and_run: false,
+                static_link: false,
                 output: PathBuf::from("outfile")
             }
     );
@@ -416,6 +427,7 @@ fn args_build_and_run_out() {
                 input: None,
                 interpreter: false,
                 build_and_run: true,
+                static_link: false,
                 output: PathBuf::from("outfile")
             }
     );
@@ -426,6 +438,7 @@ fn args_build_and_run_out() {
                 input: None,
                 interpreter: false,
                 build_and_run: true,
+                static_link: false,
                 output: PathBuf::from("outfile")
             }
     );

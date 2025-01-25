@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 
 use crate::{
+    args::AppArgs,
     parser::{
         expr_to_line_number, type_check, Ast, BinExpr, FuncCall, Variable, VariableDeclaration,
     },
@@ -15,7 +16,6 @@ use std::{
     fs::{File, OpenOptions},
     io::{Read, Write},
     os::unix::fs::PermissionsExt,
-    path::PathBuf,
     process::{exit, Command, Stdio},
 };
 
@@ -287,7 +287,7 @@ impl Compiler {
 
     /// Compiles the AST by generating IR, running it through the `qbe` compiler, and then
     /// assembling and linking the output with `cc` to produce the final executable
-    pub fn compile(&mut self, source_code: &str, output_file: PathBuf) -> Result<(), ErrorType> {
+    pub fn compile(&mut self, args: &AppArgs, source_code: &str) -> Result<(), ErrorType> {
         let ir = format!(
             "{}{}",
             include_str!("ext.ssa"),
@@ -298,7 +298,7 @@ impl Compiler {
         dbg_plain("Compiled IR", &ir);
         dbg_file_if_env(&ir, "debug.ir", "SAVE_IR");
 
-        let out_file_str = output_file.to_str().expect("invalid output file");
+        let out_file_str = args.output.to_str().expect("invalid output file");
 
         let mut qbe_output = String::new();
 
@@ -341,9 +341,15 @@ impl Compiler {
 
         let mut cc_output = String::new();
 
+        let cc_args = if args.static_link {
+            vec!["-x", "assembler", "-static", "-o", out_file_str, "-"]
+        } else {
+            vec!["-x", "assembler", "-o", out_file_str, "-"]
+        };
+
         measure_time("CC execution", || {
             let mut cc = Command::new("cc")
-                .args(["-x", "assembler", "-static", "-o", out_file_str, "-"])
+                .args(cc_args)
                 .stdin(Stdio::piped())
                 .stdout(Stdio::piped())
                 .spawn()

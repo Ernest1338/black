@@ -10,6 +10,7 @@ use std::{
 };
 
 // TODO:
+// - option in the cli to compile statically (add -static to gcc cmd)
 // - line numbers in parser errors
 // - more test cases for error returns
 // - if, else expr
@@ -174,7 +175,7 @@ fn main() {
         // ---------------
         let mut compiler = Compiler::from_ast(ast);
         measure_time("Full Compiler Execution", || {
-            if let Err(err) = compiler.compile(&orig_source_code, args.output.clone()) {
+            if let Err(err) = compiler.compile(&args, &orig_source_code) {
                 display_error(err, Output::Stderr);
                 exit(1);
             }
@@ -195,7 +196,7 @@ fn main() {
         // --------
         let mut compiler = Compiler::from_ast(ast);
         measure_time("Full Compiler Execution", || {
-            if let Err(err) = compiler.compile(&orig_source_code, args.output.clone()) {
+            if let Err(err) = compiler.compile(&args, &orig_source_code) {
                 display_error(err, Output::Stderr);
                 exit(1);
             }
