@@ -51,7 +51,7 @@ impl Interpreter {
                     // If it's a valid variable, print it
                     // Probably only useful in the interactive mode
                     // Should we only restrict this code to such condition?
-                    let var = self.get_var(id).unwrap();
+                    let var = self.get_var(id)?;
                     println!("{var}");
                 }
                 _ => {
