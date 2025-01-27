@@ -10,13 +10,14 @@ use std::{
 };
 
 // TODO:
-// - more test cases for error returns
+// - more test cases for error returns (eg var access when doesnt exist in interpreter)
+// - restructurize so the copiler and interpreter are libraries and cli is a bin
 // - if, else expr
 // - fn expr
 // - type checker
 // - static qbe in release gh
-// - linter
-// - formatter
+// - linter (another bin)
+// - formatter (another bin)
 // - build system (toml? github repos as packages. line eg. Ernest1338/package = "0.1")
 // - more test cases
 // - build for arm64 in actions, upload artifacts
