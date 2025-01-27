@@ -259,9 +259,8 @@ pub fn find_error_line_number(source: &str) -> Option<usize> {
         };
 
         compiler.load_ast(ast);
-        match compiler.generate_ir() {
-            Ok(_) => (),
-            Err(_) => return Some(current_line),
+        if let Err(_) = compiler.generate_ir() {
+            return Some(current_line);
         }
 
         // Increment current line counter
