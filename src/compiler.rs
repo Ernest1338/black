@@ -57,7 +57,7 @@ pub struct Compiler {
 }
 
 impl Compiler {
-    /// TODO
+    /// Creates a new instance of the `Compiler` struct, initializing its fields to default values
     pub fn new() -> Self {
         Self {
             ast: Vec::new(),
@@ -68,7 +68,7 @@ impl Compiler {
         }
     }
 
-    /// TODO
+    /// Loads the provided abstract syntax tree (AST) into the compiler, replacing any existing AST
     pub fn load_ast(&mut self, ast: Ast) {
         self.ast = ast;
     }

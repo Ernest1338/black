@@ -200,7 +200,7 @@ pub fn escape_string(s: &str) -> String {
 }
 
 impl From<String> for ErrorType {
-    /// TODO
+    /// Converts a String message into an ErrorType::Generic variant
     fn from(message: String) -> Self {
         ErrorType::Generic(message)
     }
@@ -220,7 +220,7 @@ pub fn dbg_file_if_env(data: &str, file: &str, var: &str) {
     }
 }
 
-/// TODO
+/// Finds the line number where a syntax error occurs in the given source code
 pub fn find_error_line_number(source: &str) -> Option<usize> {
     let mut current_line = 1;
     let mut context = String::new();
