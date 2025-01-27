@@ -199,11 +199,10 @@ pub fn escape_string(s: &str) -> String {
     s.replace("\\", "\\\\").replace("\"", "\\\"")
 }
 
-/// TODO
-pub fn errstr_to_errtype<T>(result: Result<T, String>) -> Result<T, ErrorType> {
-    match result {
-        Ok(value) => Ok(value),
-        Err(message) => Err(ErrorType::Generic(message)),
+impl From<String> for ErrorType {
+    /// TODO
+    fn from(message: String) -> Self {
+        ErrorType::Generic(message)
     }
 }
 

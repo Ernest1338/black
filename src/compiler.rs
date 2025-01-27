@@ -4,8 +4,7 @@ use crate::{
     args::AppArgs,
     parser::{type_check, Ast, BinExpr, FuncCall, Variable, VariableDeclaration},
     utils::{
-        dbg, dbg_file_if_env, dbg_plain, errstr_to_errtype, escape_string, get_tmp_fname,
-        measure_time, ErrorType,
+        dbg, dbg_file_if_env, dbg_plain, escape_string, get_tmp_fname, measure_time, ErrorType,
     },
     Expr,
 };
@@ -273,10 +272,10 @@ impl Compiler {
 
         for node in &ast {
             match node {
-                Expr::FuncCall(func_call) => errstr_to_errtype(self.handle_func_call(func_call))?,
+                Expr::FuncCall(func_call) => self.handle_func_call(func_call)?,
 
                 Expr::VariableDeclaration(variable_declaration) => {
-                    errstr_to_errtype(self.handle_var_decl(variable_declaration))?
+                    self.handle_var_decl(variable_declaration)?
                 }
 
                 _ => {

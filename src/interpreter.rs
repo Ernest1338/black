@@ -1,6 +1,6 @@
 use crate::{
     parser::{type_check, Ast, BinExpr, BinOpKind, FuncCall, Variable, VariableDeclaration},
-    utils::{errstr_to_errtype, ErrorType},
+    utils::ErrorType,
     Expr,
 };
 use std::{collections::HashMap, fmt};
@@ -45,10 +45,8 @@ impl Interpreter {
 
         for node in &ast {
             match node {
-                Expr::FuncCall(func_call) => errstr_to_errtype(self.handle_func_call(func_call))?,
-                Expr::VariableDeclaration(variable_declaration) => {
-                    errstr_to_errtype(self.handle_var_decl(variable_declaration))?
-                }
+                Expr::FuncCall(func_call) => self.handle_func_call(func_call)?,
+                Expr::VariableDeclaration(var_decl) => self.handle_var_decl(var_decl)?,
                 Expr::Identifier(id) => {
                     // If it's a valid variable, print it
                     // Probably only useful in the interactive mode
