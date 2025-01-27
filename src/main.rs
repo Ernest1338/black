@@ -1,8 +1,7 @@
 use crate::{
     compiler::Compiler,
     interpreter::Interpreter,
-    parser::get_parser_line_number,
-    utils::{display_error, ErrorInner, ErrorType, Output},
+    utils::{display_error, ErrorType, Output},
 };
 use std::{
     fs::{canonicalize, read_to_string},
@@ -84,7 +83,7 @@ fn main() {
             let tokens = match lexer(&code) {
                 Ok(tokens) => tokens,
                 Err(err) => {
-                    display_error(err, Output::Stdout);
+                    display_error(err, &code, Output::Stdout);
                     continue;
                 }
             };
@@ -92,7 +91,7 @@ fn main() {
             let ast = match parser.parse() {
                 Ok(ast) => ast,
                 Err(err) => {
-                    display_error(err, Output::Stdout);
+                    display_error(err, &code, Output::Stdout);
                     continue;
                 }
             };
@@ -101,9 +100,9 @@ fn main() {
             // Clear last line
             print!("\x1b[1A\x1b[2K");
 
-            let res = interpreter.run(&input);
+            let res = interpreter.run();
             if let Err(err) = res {
-                display_error(err, Output::Stdout);
+                display_error(err, &code, Output::Stdout);
             }
         }
     }
@@ -116,10 +115,8 @@ fn main() {
             Ok(input) => input,
             Err(_) => {
                 display_error(
-                    ErrorType::Generic(ErrorInner {
-                        message: "Could not read source code file".to_string(),
-                        line_number: None,
-                    }),
+                    ErrorType::Generic("Could not read source code file".to_string()),
+                    "",
                     Output::Stderr,
                 );
                 exit(1);
@@ -139,7 +136,7 @@ fn main() {
     let tokens = measure_time("Lexical Analysis", || match lexer(&source_code) {
         Ok(tokens) => tokens,
         Err(err) => {
-            display_error(err, Output::Stderr);
+            display_error(err, &orig_source_code, Output::Stderr);
             exit(1);
         }
     });
@@ -153,14 +150,12 @@ fn main() {
         Ok(ast) => ast,
         Err(err) => {
             let message = match err {
-                ErrorType::SyntaxError(e) => e.message,
+                ErrorType::SyntaxError(e) => e,
                 _ => "".to_string(),
             };
             display_error(
-                ErrorType::SyntaxError(ErrorInner {
-                    message,
-                    line_number: get_parser_line_number(&orig_source_code),
-                }),
+                ErrorType::SyntaxError(message),
+                &orig_source_code,
                 Output::Stderr,
             );
             exit(1);
@@ -174,8 +169,8 @@ fn main() {
         // -----------
         let mut interpreter = Interpreter::from_ast(ast);
         measure_time("Interpreter Execution", || {
-            if let Err(err) = interpreter.run(&orig_source_code) {
-                display_error(err, Output::Stderr);
+            if let Err(err) = interpreter.run() {
+                display_error(err, &orig_source_code, Output::Stderr);
                 exit(1);
             }
         });
@@ -185,8 +180,8 @@ fn main() {
         // ---------------
         let mut compiler = Compiler::from_ast(ast);
         measure_time("Full Compiler Execution", || {
-            if let Err(err) = compiler.compile(&args, &orig_source_code) {
-                display_error(err, Output::Stderr);
+            if let Err(err) = compiler.compile(&args) {
+                display_error(err, &orig_source_code, Output::Stderr);
                 exit(1);
             }
         });
@@ -206,8 +201,8 @@ fn main() {
         // --------
         let mut compiler = Compiler::from_ast(ast);
         measure_time("Full Compiler Execution", || {
-            if let Err(err) = compiler.compile(&args, &orig_source_code) {
-                display_error(err, Output::Stderr);
+            if let Err(err) = compiler.compile(&args) {
+                display_error(err, &orig_source_code, Output::Stderr);
                 exit(1);
             }
         });

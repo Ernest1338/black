@@ -5,7 +5,7 @@ use crate::{
     compiler::Compiler,
     interpreter::Interpreter,
     parser::{lexer, preprocess, Parser},
-    utils::{get_tmp_fname, ErrorInner, ErrorType},
+    utils::{get_tmp_fname, ErrorType},
 };
 use std::{
     fs::{remove_file, OpenOptions},
@@ -133,16 +133,13 @@ fn get_compiler_res(code: &str) -> Result<(), ErrorType> {
     let mut compiler = Compiler::from_ast(ast);
     let bin_fname = get_tmp_fname("blkbin");
 
-    compiler.compile(
-        &AppArgs {
-            output: bin_fname.into(),
-            static_link: false,
-            interpreter: false,
-            build_and_run: false,
-            input: None,
-        },
-        &code,
-    )
+    compiler.compile(&AppArgs {
+        output: bin_fname.into(),
+        static_link: false,
+        interpreter: false,
+        build_and_run: false,
+        input: None,
+    })
 }
 
 fn get_interpreter_res(code: &str) -> Result<(), ErrorType> {
@@ -165,7 +162,7 @@ fn get_interpreter_res(code: &str) -> Result<(), ErrorType> {
     // Interpreter
     let mut interpreter = Interpreter::from_ast(ast);
 
-    interpreter.run(&code)
+    interpreter.run()
 }
 
 fn assert_error(result: Result<(), ErrorType>, expected: &ErrorType) {
@@ -447,10 +444,7 @@ fn args_build_and_run_out() {
 #[test]
 fn err_unknown_func() {
     let code = r#"prnt("test")"#;
-    let expected = ErrorType::Generic(ErrorInner {
-        message: "Function `prnt` is not implemented".to_string(),
-        line_number: Some(1),
-    });
+    let expected = ErrorType::Generic("Function `prnt` is not implemented".to_string());
 
     assert_error(get_compiler_res(code), &expected);
     assert_error(get_interpreter_res(code), &expected);
@@ -459,10 +453,7 @@ fn err_unknown_func() {
 #[test]
 fn err_variable_doesnt_exist() {
     let code = r#"print(a)"#;
-    let expected = ErrorType::Generic(ErrorInner {
-        message: "Variable doesn't exist: `a`".to_string(),
-        line_number: Some(1),
-    });
+    let expected = ErrorType::Generic("Variable doesn't exist: `a`".to_string());
 
     assert_error(get_compiler_res(code), &expected);
     assert_error(get_interpreter_res(code), &expected);
@@ -471,10 +462,7 @@ fn err_variable_doesnt_exist() {
 #[test]
 fn err_invalid_print_arg() {
     let code = r#"print(let a = 2)"#;
-    let expected = ErrorType::Generic(ErrorInner {
-        message: "Invalid argument to print".to_string(),
-        line_number: Some(1),
-    });
+    let expected = ErrorType::Generic("Invalid argument to print".to_string());
 
     assert_error(get_compiler_res(code), &expected);
     assert_error(get_interpreter_res(code), &expected);
@@ -483,10 +471,7 @@ fn err_invalid_print_arg() {
 #[test]
 fn err_add_not_num() {
     let code = r#"print(1+"")"#;
-    let expected = ErrorType::Generic(ErrorInner {
-        message: "Cannot add variable which is not a number".to_string(),
-        line_number: Some(1),
-    });
+    let expected = ErrorType::Generic("Cannot add variable which is not a number".to_string());
 
     assert_error(get_compiler_res(code), &expected);
     assert_error(get_interpreter_res(code), &expected);
@@ -495,10 +480,9 @@ fn err_add_not_num() {
 #[test]
 fn err_invalid_expr_type() {
     let code = r#"1"#;
-    let expected = ErrorType::Generic(ErrorInner {
-        message: "Expression `Number(1)` in this context is not yet implemented".to_string(),
-        line_number: Some(1),
-    });
+    let expected = ErrorType::Generic(
+        "Expression `Number(1)` in this context is not yet implemented".to_string(),
+    );
 
     assert_error(get_compiler_res(code), &expected);
     assert_error(get_interpreter_res(code), &expected);
@@ -507,10 +491,7 @@ fn err_invalid_expr_type() {
 #[test]
 fn err_var_type_str_but_not_str() {
     let code = r#"let str a = 1"#;
-    let expected = ErrorType::Generic(ErrorInner {
-        message: "Variable type `str` does not match value type".to_string(),
-        line_number: Some(1),
-    });
+    let expected = ErrorType::Generic("Variable type `str` does not match value type".to_string());
 
     assert_error(get_compiler_res(code), &expected);
     assert_error(get_interpreter_res(code), &expected);

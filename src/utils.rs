@@ -1,4 +1,7 @@
-use crate::parser::{expr_to_line_number, Expr};
+use crate::{
+    compiler::Compiler,
+    parser::{lexer, Parser},
+};
 use std::{
     env,
     fmt::{Debug, Display},
@@ -146,15 +149,9 @@ pub fn measure_time<T, F: FnOnce() -> T>(label: &str, f: F) -> T {
 }
 
 #[derive(Debug, PartialEq)]
-pub struct ErrorInner {
-    pub message: String,
-    pub line_number: Option<usize>,
-}
-
-#[derive(Debug, PartialEq)]
 pub enum ErrorType {
-    SyntaxError(ErrorInner),
-    Generic(ErrorInner),
+    SyntaxError(String),
+    Generic(String),
 }
 
 fn get_line_nr_str(line_nr: Option<usize>) -> String {
@@ -171,27 +168,27 @@ pub enum Output {
 }
 
 /// Display error to the user in a pretty way
-pub fn display_error(err: ErrorType, target: Output) {
+pub fn display_error(err: ErrorType, src: &str, target: Output) {
     let output_fn = match target {
         Output::Stdout => |msg| println!("{msg}"),
         Output::Stderr => |msg| eprintln!("{msg}"),
     };
 
     match err {
-        ErrorType::SyntaxError(inner) => {
+        ErrorType::SyntaxError(message) => {
             output_fn(&format!(
                 "{}{} {}",
                 color("[Syntax Error]", Color::LightRed),
-                get_line_nr_str(inner.line_number),
-                inner.message
+                get_line_nr_str(find_error_line_number(src)),
+                message
             ));
         }
-        ErrorType::Generic(inner) => {
+        ErrorType::Generic(message) => {
             output_fn(&format!(
                 "{}{} {}",
                 color("[Error]", Color::LightRed),
-                get_line_nr_str(inner.line_number),
-                inner.message
+                get_line_nr_str(find_error_line_number(src)),
+                message
             ));
         }
     };
@@ -202,18 +199,11 @@ pub fn escape_string(s: &str) -> String {
     s.replace("\\", "\\\\").replace("\"", "\\\"")
 }
 
-/// Maps a result to include line number information in errors
-pub fn map_line_nr<T>(
-    result: Result<T, String>,
-    node: &Expr,
-    source_code: &str,
-) -> Result<T, ErrorType> {
+/// TODO
+pub fn errstr_to_errtype<T>(result: Result<T, String>) -> Result<T, ErrorType> {
     match result {
         Ok(value) => Ok(value),
-        Err(message) => Err(ErrorType::Generic(ErrorInner {
-            message,
-            line_number: expr_to_line_number(node, source_code),
-        })),
+        Err(message) => Err(ErrorType::Generic(message)),
     }
 }
 
@@ -229,4 +219,55 @@ pub fn dbg_file_if_env(data: &str, file: &str, var: &str) {
             .write_all(data.as_bytes())
             .unwrap();
     }
+}
+
+/// TODO
+pub fn find_error_line_number(source: &str) -> Option<usize> {
+    let mut current_line = 1;
+    let mut context = String::new();
+    let mut compiler = Compiler::new();
+
+    // Iterate through the source line by line
+    for line in source.lines() {
+        // Handle line comments and empty lines
+        if line.starts_with("//") || line.is_empty() {
+            current_line += 1;
+            continue;
+        }
+
+        // Handle inline comments
+        let line = line.split("//").collect::<Vec<&str>>()[0];
+
+        // Append context
+        context.push_str(&format!("{line}\n"));
+
+        // Tokenize and parse the context
+        let context_tokens = match lexer(&context) {
+            Ok(tokens) => tokens,
+            Err(_) => return Some(current_line), // Return current line if lexer fails
+        };
+
+        let mut parser = Parser::new(&context_tokens);
+        let ast = match parser.parse() {
+            Ok(ast) => {
+                context.clear();
+                ast
+            }
+            Err(_) => {
+                // Return the current line where parsing fails
+                return Some(current_line);
+            }
+        };
+
+        compiler.load_ast(ast);
+        match compiler.generate_ir() {
+            Ok(_) => (),
+            Err(_) => return Some(current_line),
+        }
+
+        // Increment current line counter
+        current_line += 1;
+    }
+
+    None // Return None if no error line is found
 }

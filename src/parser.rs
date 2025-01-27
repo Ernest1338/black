@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use crate::utils::{ErrorInner, ErrorType};
+use crate::utils::ErrorType;
 use std::{fmt, iter::Peekable, slice::Iter, str::FromStr};
 
 /// Represents different token types for the lexer
@@ -183,7 +183,7 @@ pub fn preprocess(code: &str) -> String {
 pub fn lexer(input: &str) -> Result<Vec<Token>, ErrorType> {
     let mut tokens = Vec::new();
 
-    for (line_nr, line) in input.lines().enumerate() {
+    for line in input.lines() {
         let mut remaining = line.trim();
         while !remaining.is_empty() {
             match Token::from_str(remaining) {
@@ -193,105 +193,15 @@ pub fn lexer(input: &str) -> Result<Vec<Token>, ErrorType> {
                     tokens.push(token);
                 }
                 Err(_) => {
-                    return Err(ErrorType::SyntaxError(ErrorInner {
-                        message: format!("Unexpected token: {remaining}"),
-                        line_number: Some(line_nr + 1),
-                    }))
+                    return Err(ErrorType::SyntaxError(format!(
+                        "Unexpected token: {remaining}"
+                    )))
                 }
             }
         }
     }
 
     Ok(tokens)
-}
-
-/// Finds expr in the source provided in the argument. Returns a line number as usize
-pub fn expr_to_line_number(expr: &Expr, source: &str) -> Option<usize> {
-    let mut current_line = 1;
-
-    let mut context = String::new();
-
-    // Iterate through the source line by line
-    for line in source.lines() {
-        // Handle line comments and empty lines
-        if line.starts_with("//") || line.is_empty() {
-            current_line += 1;
-            continue;
-        }
-
-        // Handle inline comments
-        let line = line.split("//").collect::<Vec<&str>>()[0];
-
-        // Append context
-        context.push_str(&format!("{line}\n"));
-
-        let context_tokens: Vec<Token> = lexer(&context).unwrap_or_default();
-
-        // Use the parser to parse the tokens of the current context
-        let mut parser = Parser::new(&context_tokens);
-
-        match parser.parse_expr() {
-            Ok(parsed_expr) => {
-                // Clear current context
-                context.clear();
-                // Compare the parsed expression with the given expression
-                if *expr == parsed_expr {
-                    return Some(current_line);
-                }
-            }
-            Err(_) => continue,
-        }
-
-        // Increment current line counter
-        current_line += 1;
-    }
-
-    None
-}
-
-pub fn get_parser_line_number(source: &str) -> Option<usize> {
-    let mut current_line = 1;
-    let mut context = String::new();
-
-    // Iterate through the source line by line
-    for line in source.lines() {
-        // Handle line comments and empty lines
-        if line.starts_with("//") || line.is_empty() {
-            current_line += 1;
-            continue;
-        }
-
-        // Handle inline comments
-        let line = line.split("//").collect::<Vec<&str>>()[0];
-
-        // Append context
-        context.push_str(&format!("{line}\n"));
-
-        // Tokenize the context
-        let context_tokens = match lexer(&context) {
-            Ok(tokens) => tokens,
-            Err(_) => return Some(current_line), // Return current line if lexer fails
-        };
-
-        // Use the parser to parse the tokens of the current context
-        let mut parser = Parser::new(&context_tokens);
-
-        match parser.parse() {
-            Ok(_) => {
-                // Clear current context if parsing succeeds
-                context.clear();
-            }
-            Err(_) => {
-                // Return the current line where parsing fails
-                return Some(current_line);
-            }
-        }
-
-        // Increment current line counter
-        current_line += 1;
-    }
-
-    None // Return None if no error line is found
 }
 
 /// Represents a parsed expression in the abstract syntax tree (AST)
@@ -389,21 +299,16 @@ impl<'a> Parser<'a> {
             Some(Token::LeftParen) => {
                 let expr = self.parse_expr()?;
                 if self.tokens.next() != Some(&Token::RightParen) {
-                    return Err(ErrorType::SyntaxError(ErrorInner {
-                        message: "Expected ')'".to_string(),
-                        line_number: None,
-                    }));
+                    return Err(ErrorType::SyntaxError("Expected ')'".to_string()));
                 }
                 Ok(expr)
             }
-            Some(token) => Err(ErrorType::SyntaxError(ErrorInner {
-                message: format!("Unexpected token: {:?}", token),
-                line_number: None,
-            })),
-            None => Err(ErrorType::SyntaxError(ErrorInner {
-                message: "Unexpected end of input".to_string(),
-                line_number: None,
-            })),
+            Some(token) => Err(ErrorType::SyntaxError(format!(
+                "Unexpected token: {token:?}",
+            ))),
+            None => Err(ErrorType::SyntaxError(
+                "Unexpected end of input".to_string(),
+            )),
         }
     }
 
@@ -413,10 +318,9 @@ impl<'a> Parser<'a> {
 
         // Consume the opening parenthesis '('
         if self.tokens.next() != Some(&Token::LeftParen) {
-            return Err(ErrorType::SyntaxError(ErrorInner {
-                message: "Expected '(' after function name".to_string(),
-                line_number: None,
-            }));
+            return Err(ErrorType::SyntaxError(
+                "Expected '(' after function name".to_string(),
+            ));
         }
 
         // Parse arguments until a closing parenthesis ')'
@@ -434,10 +338,9 @@ impl<'a> Parser<'a> {
                     args.push(self.parse_expr()?);
                 }
                 None => {
-                    return Err(ErrorType::SyntaxError(ErrorInner {
-                        message: "Unexpected end of input, expected ')'".to_string(),
-                        line_number: None,
-                    }));
+                    return Err(ErrorType::SyntaxError(
+                        "Unexpected end of input, expected ')'".to_string(),
+                    ));
                 }
             }
         }
@@ -468,16 +371,14 @@ impl<'a> Parser<'a> {
                 Token::Identifier(id) => Some(id),
                 _ => None,
             })
-            .ok_or(ErrorType::SyntaxError(ErrorInner {
-                message: "Expected identifier after variable type".to_string(),
-                line_number: None,
-            }))?;
+            .ok_or(ErrorType::SyntaxError(
+                "Expected identifier after variable type".to_string(),
+            ))?;
 
         if self.tokens.next() != Some(&Token::Equals) {
-            return Err(ErrorType::SyntaxError(ErrorInner {
-                message: "Expected '=' after variable name".to_string(),
-                line_number: None,
-            }));
+            return Err(ErrorType::SyntaxError(
+                "Expected '=' after variable name".to_string(),
+            ));
         }
 
         Ok(Expr::VariableDeclaration(Box::new(VariableDeclaration {
@@ -522,10 +423,9 @@ impl<'a> Parser<'a> {
         let peek = match self.tokens.peek() {
             Some(peek) => peek,
             None => {
-                return Err(ErrorType::SyntaxError(ErrorInner {
-                    message: "Unexpected end of input".to_string(),
-                    line_number: None,
-                }))
+                return Err(ErrorType::SyntaxError(
+                    "Unexpected end of input".to_string(),
+                ))
             }
         };
 

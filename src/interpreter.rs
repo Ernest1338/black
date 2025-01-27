@@ -1,9 +1,6 @@
 use crate::{
-    parser::{
-        expr_to_line_number, type_check, Ast, BinExpr, BinOpKind, FuncCall, Variable,
-        VariableDeclaration,
-    },
-    utils::{map_line_nr, ErrorInner, ErrorType},
+    parser::{type_check, Ast, BinExpr, BinOpKind, FuncCall, Variable, VariableDeclaration},
+    utils::{errstr_to_errtype, ErrorType},
     Expr,
 };
 use std::{collections::HashMap, fmt};
@@ -43,33 +40,26 @@ impl Interpreter {
     }
 
     /// Runs the interpreter, processing each expression in the AST
-    pub fn run(&mut self, source_code: &str) -> Result<(), ErrorType> {
+    pub fn run(&mut self) -> Result<(), ErrorType> {
         let ast = self.ast.clone();
 
         for node in &ast {
             match node {
-                Expr::FuncCall(func_call) => {
-                    map_line_nr(self.handle_func_call(func_call), node, source_code)?
+                Expr::FuncCall(func_call) => errstr_to_errtype(self.handle_func_call(func_call))?,
+                Expr::VariableDeclaration(variable_declaration) => {
+                    errstr_to_errtype(self.handle_var_decl(variable_declaration))?
                 }
-                Expr::VariableDeclaration(variable_declaration) => map_line_nr(
-                    self.handle_var_decl(variable_declaration),
-                    node,
-                    source_code,
-                )?,
                 Expr::Identifier(id) => {
                     // If it's a valid variable, print it
                     // Probably only useful in the interactive mode
                     // Should we only restrict this code to such condition?
-                    let var = map_line_nr(self.get_var(id), node, source_code)?;
+                    let var = self.get_var(id).unwrap();
                     println!("{var}");
                 }
                 _ => {
-                    return Err(ErrorType::Generic(ErrorInner {
-                        message: format!(
-                            "Expression `{node:?}` in this context is not yet implemented"
-                        ),
-                        line_number: expr_to_line_number(node, source_code),
-                    }))
+                    return Err(ErrorType::Generic(format!(
+                        "Expression `{node:?}` in this context is not yet implemented"
+                    )))
                 }
             }
         }

@@ -2,12 +2,10 @@
 
 use crate::{
     args::AppArgs,
-    parser::{
-        expr_to_line_number, type_check, Ast, BinExpr, FuncCall, Variable, VariableDeclaration,
-    },
+    parser::{type_check, Ast, BinExpr, FuncCall, Variable, VariableDeclaration},
     utils::{
-        dbg, dbg_file_if_env, dbg_plain, escape_string, get_tmp_fname, map_line_nr, measure_time,
-        ErrorInner, ErrorType,
+        dbg, dbg_file_if_env, dbg_plain, errstr_to_errtype, escape_string, get_tmp_fname,
+        measure_time, ErrorType,
     },
     Expr,
 };
@@ -60,6 +58,22 @@ pub struct Compiler {
 }
 
 impl Compiler {
+    /// TODO
+    pub fn new() -> Self {
+        Self {
+            ast: Vec::new(),
+            ir: String::new(),
+            data: String::new(),
+            pk: 0,
+            variables: HashMap::new(),
+        }
+    }
+
+    /// TODO
+    pub fn load_ast(&mut self, ast: Ast) {
+        self.ast = ast;
+    }
+
     /// Creates a new `Compiler` instance from the given AST, initializing necessary fields
     pub fn from_ast(ast: Ast) -> Self {
         Self {
@@ -252,30 +266,23 @@ impl Compiler {
     }
 
     /// Generates the intermediate representation (IR) for the AST and returns it as a string
-    pub fn generate_ir(&mut self, source_code: &str) -> Result<String, ErrorType> {
+    pub fn generate_ir(&mut self) -> Result<String, ErrorType> {
         self.ir.push_str("export function w $main() {\n@start\n");
 
         let ast = self.ast.clone();
 
         for node in &ast {
             match node {
-                Expr::FuncCall(func_call) => {
-                    map_line_nr(self.handle_func_call(func_call), node, source_code)?
+                Expr::FuncCall(func_call) => errstr_to_errtype(self.handle_func_call(func_call))?,
+
+                Expr::VariableDeclaration(variable_declaration) => {
+                    errstr_to_errtype(self.handle_var_decl(variable_declaration))?
                 }
 
-                Expr::VariableDeclaration(variable_declaration) => map_line_nr(
-                    self.handle_var_decl(variable_declaration),
-                    node,
-                    source_code,
-                )?,
-
                 _ => {
-                    return Err(ErrorType::Generic(ErrorInner {
-                        message: format!(
-                            "Expression `{node:?}` in this context is not yet implemented"
-                        ),
-                        line_number: expr_to_line_number(node, source_code),
-                    }));
+                    return Err(ErrorType::Generic(format!(
+                        "Expression `{node:?}` in this context is not yet implemented"
+                    )));
                 }
             }
         }
@@ -287,12 +294,8 @@ impl Compiler {
 
     /// Compiles the AST by generating IR, running it through the `qbe` compiler, and then
     /// assembling and linking the output with `cc` to produce the final executable
-    pub fn compile(&mut self, args: &AppArgs, source_code: &str) -> Result<(), ErrorType> {
-        let ir = format!(
-            "{}{}",
-            include_str!("ext.ssa"),
-            self.generate_ir(source_code)?
-        );
+    pub fn compile(&mut self, args: &AppArgs) -> Result<(), ErrorType> {
+        let ir = format!("{}{}", include_str!("ext.ssa"), self.generate_ir()?);
 
         dbg("Variables", &self.variables);
         dbg_plain("Compiled IR", &ir);
