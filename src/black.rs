@@ -10,6 +10,7 @@ use std::{
 };
 
 // TODO:
+// - beatutiful error messages
 // - more test cases for error returns (eg var access when doesnt exist in interpreter)
 // - restructurize so the copiler and interpreter are libraries and cli is a bin
 // - if, else expr
