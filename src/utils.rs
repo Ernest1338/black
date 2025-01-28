@@ -174,24 +174,18 @@ pub fn display_error(err: ErrorType, src: &str, target: Output) {
         Output::Stderr => |msg| eprintln!("{msg}"),
     };
 
-    match err {
-        ErrorType::SyntaxError(message) => {
-            output_fn(&format!(
-                "{}{} {}",
-                color("[Syntax Error]", Color::LightRed),
-                get_line_nr_str(find_error_line_number(src)),
-                message
-            ));
-        }
-        ErrorType::Generic(message) => {
-            output_fn(&format!(
-                "{}{} {}",
-                color("[Error]", Color::LightRed),
-                get_line_nr_str(find_error_line_number(src)),
-                message
-            ));
-        }
+    let (prefix, message) = match err {
+        ErrorType::SyntaxError(msg) => ("[Syntax Error]", msg),
+        ErrorType::Generic(msg) => ("[Error]", msg),
     };
+
+    let formatted_message = format!(
+        "{}{} {message}",
+        color(prefix, Color::LightRed),
+        get_line_nr_str(find_error_line_number(src))
+    );
+
+    output_fn(&formatted_message);
 }
 
 /// Escapes backslashes and double quotes in a string for safe inclusion in string literals
@@ -222,6 +216,11 @@ pub fn dbg_file_if_env(data: &str, file: &str, var: &str) {
 
 /// Finds the line number where a syntax error occurs in the given source code
 pub fn find_error_line_number(source: &str) -> Option<usize> {
+    // Early return if disabled line number backtracing
+    if env::var("DISABLE_LINE_NUMBER_BACKTRACING").is_ok() {
+        return None;
+    }
+
     let mut current_line = 1;
     let mut context = String::new();
     let mut compiler = Compiler::new();
@@ -259,7 +258,7 @@ pub fn find_error_line_number(source: &str) -> Option<usize> {
         };
 
         compiler.load_ast(ast);
-        if let Err(_) = compiler.generate_ir() {
+        if compiler.generate_ir().is_err() {
             return Some(current_line);
         }
 
