@@ -5,7 +5,7 @@ use crate::{
 use std::{
     env,
     fmt::{Debug, Display},
-    fs::OpenOptions,
+    fs::{read_to_string, OpenOptions},
     io::{stdout, Write},
     time::{Instant, SystemTime, UNIX_EPOCH},
 };
@@ -154,12 +154,12 @@ pub enum ErrorType {
     Generic(String),
 }
 
-fn get_line_nr_str(line_nr: Option<usize>) -> String {
-    match line_nr {
-        Some(line_nr) => format!(" on line {line_nr}:"),
-        None => "".to_string(),
-    }
-}
+// fn get_line_nr_str(line_nr: Option<usize>) -> String {
+//     match line_nr {
+//         Some(line_nr) => color(&format!(" on line {line_nr}:"), Color::Gray),
+//         None => "".to_string(),
+//     }
+// }
 
 #[derive(Debug, PartialEq)]
 pub enum Output {
@@ -168,7 +168,7 @@ pub enum Output {
 }
 
 /// Display error to the user in a pretty way
-pub fn display_error(err: ErrorType, src: &str, target: Output) {
+pub fn display_error(err: ErrorType, filename: &str, target: Output) {
     let output_fn = match target {
         Output::Stdout => |msg| println!("{msg}"),
         Output::Stderr => |msg| eprintln!("{msg}"),
@@ -179,11 +179,49 @@ pub fn display_error(err: ErrorType, src: &str, target: Output) {
         ErrorType::Generic(msg) => ("[Error]", msg),
     };
 
-    let formatted_message = format!(
-        "{}{} {message}",
+    // Early return if disabled line number backtracing
+    if env::var("DISABLE_LINE_NUMBER_BACKTRACING").is_ok() {
+        let formatted_message = format!("{} {}", color(prefix, Color::LightRed), message);
+        return output_fn(&formatted_message);
+    }
+
+    let source = read_to_string(filename).ok();
+    let line_nr = source
+        .as_ref()
+        .and_then(|src| find_error_line_number(src))
+        .unwrap();
+    let lines = source.as_ref().map(|src| src.lines().collect::<Vec<_>>());
+
+    let mut formatted_message = String::new();
+    formatted_message.push_str(&color("─────────────────────────────────", Color::Gray));
+    formatted_message.push_str(&format!(
+        "\n{} {}\n",
         color(prefix, Color::LightRed),
-        get_line_nr_str(find_error_line_number(src))
-    );
+        color(&format!("{filename}:{line_nr}"), Color::Underline)
+    ));
+
+    // Append the source line if available
+    if let (n, Some(lines)) = (line_nr, lines) {
+        if let Some(line) = lines.get(n - 1) {
+            let line_length = line.len();
+            let underline = format!(
+                " {}{} {} {}",
+                " ".repeat(n.to_string().len()),
+                color("|", Color::Gray),
+                color(&"‾".repeat(line_length), Color::Red),
+                color(&message, Color::Red)
+            );
+            formatted_message.push_str(&format!(
+                " {}{}\n{}{} {line}",
+                " ".repeat(n.to_string().len()),
+                color("|", Color::Gray),
+                color(&n.to_string(), Color::Gray),
+                color(" |", Color::Gray)
+            ));
+            formatted_message.push_str(&format!("\n{underline}"));
+            formatted_message.push_str(&color("\n─────────────────────────────────", Color::Gray));
+        }
+    }
 
     output_fn(&formatted_message);
 }

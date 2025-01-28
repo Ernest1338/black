@@ -1,7 +1,7 @@
 use crate::{
     compiler::Compiler,
     interpreter::Interpreter,
-    utils::{display_error, ErrorType, Output},
+    utils::{display_error, get_tmp_fname, ErrorType, Output},
 };
 use std::{
     fs::{canonicalize, read_to_string},
@@ -10,7 +10,6 @@ use std::{
 };
 
 // TODO:
-// - beatutiful error messages
 // - more test cases for error returns (eg var access when doesnt exist in interpreter)
 // - restructurize so the copiler and interpreter are libraries and cli is a bin
 // - if, else expr
@@ -81,10 +80,14 @@ fn main() {
             input = input.trim().to_string();
 
             let code = preprocess(&input);
+
+            let tmp_code_fname = get_tmp_fname("black_interactive");
+            std::fs::write(&tmp_code_fname, &code).expect("Failed to write temporary file");
+
             let tokens = match lexer(&code) {
                 Ok(tokens) => tokens,
                 Err(err) => {
-                    display_error(err, &code, Output::Stdout);
+                    display_error(err, &tmp_code_fname, Output::Stdout);
                     continue;
                 }
             };
@@ -92,7 +95,7 @@ fn main() {
             let ast = match parser.parse() {
                 Ok(ast) => ast,
                 Err(err) => {
-                    display_error(err, &code, Output::Stdout);
+                    display_error(err, &tmp_code_fname, Output::Stdout);
                     continue;
                 }
             };
@@ -103,8 +106,10 @@ fn main() {
 
             let res = interpreter.run();
             if let Err(err) = res {
-                display_error(err, &code, Output::Stdout);
+                display_error(err, &tmp_code_fname, Output::Stdout);
             }
+
+            std::fs::remove_file(tmp_code_fname).expect("Failed to remove temporary file");
         }
     }
 
@@ -117,7 +122,7 @@ fn main() {
             Err(_) => {
                 display_error(
                     ErrorType::Generic("Could not read source code file".to_string()),
-                    "",
+                    args.input.as_ref().unwrap().to_str().unwrap(),
                     Output::Stderr,
                 );
                 exit(1);
@@ -125,6 +130,7 @@ fn main() {
         },
         None => panic!("Input argument unexpectedly None. This is a bug."),
     };
+    let input_file = args.input.as_ref().unwrap().to_str().unwrap();
 
     // -------------
     // Preprocessing
@@ -137,7 +143,7 @@ fn main() {
     let tokens = measure_time("Lexical Analysis", || match lexer(&source_code) {
         Ok(tokens) => tokens,
         Err(err) => {
-            display_error(err, &orig_source_code, Output::Stderr);
+            display_error(err, input_file, Output::Stderr);
             exit(1);
         }
     });
@@ -154,11 +160,7 @@ fn main() {
                 ErrorType::SyntaxError(e) => e,
                 _ => "".to_string(),
             };
-            display_error(
-                ErrorType::SyntaxError(message),
-                &orig_source_code,
-                Output::Stderr,
-            );
+            display_error(ErrorType::SyntaxError(message), input_file, Output::Stderr);
             exit(1);
         }
     });
@@ -171,7 +173,7 @@ fn main() {
         let mut interpreter = Interpreter::from_ast(ast);
         measure_time("Interpreter Execution", || {
             if let Err(err) = interpreter.run() {
-                display_error(err, &orig_source_code, Output::Stderr);
+                display_error(err, input_file, Output::Stderr);
                 exit(1);
             }
         });
@@ -182,7 +184,7 @@ fn main() {
         let mut compiler = Compiler::from_ast(ast);
         measure_time("Full Compiler Execution", || {
             if let Err(err) = compiler.compile(&args) {
-                display_error(err, &orig_source_code, Output::Stderr);
+                display_error(err, input_file, Output::Stderr);
                 exit(1);
             }
         });
@@ -203,7 +205,7 @@ fn main() {
         let mut compiler = Compiler::from_ast(ast);
         measure_time("Full Compiler Execution", || {
             if let Err(err) = compiler.compile(&args) {
-                display_error(err, &orig_source_code, Output::Stderr);
+                display_error(err, input_file, Output::Stderr);
                 exit(1);
             }
         });
