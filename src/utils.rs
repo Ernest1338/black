@@ -169,61 +169,65 @@ pub enum Output {
 
 /// Display error to the user in a pretty way
 pub fn display_error(err: ErrorType, filename: &str, target: Output) {
-    let output_fn = match target {
-        Output::Stdout => |msg| println!("{msg}"),
-        Output::Stderr => |msg| eprintln!("{msg}"),
+    // Closure to direct output based on target (stdout/stderr)
+    let output_fn = |msg| match target {
+        Output::Stdout => println!("{}", msg),
+        Output::Stderr => eprintln!("{}", msg),
     };
 
+    // Extract error prefix and message based on error type
     let (prefix, message) = match err {
         ErrorType::SyntaxError(msg) => ("[Syntax Error]", msg),
         ErrorType::Generic(msg) => ("[Error]", msg),
     };
 
-    // Early return if disabled line number backtracing
+    // Short-circuit if line numbering is disabled
     if env::var("DISABLE_LINE_NUMBER_BACKTRACING").is_ok() {
-        let formatted_message = format!("{} {}", color(prefix, Color::LightRed), message);
-        return output_fn(&formatted_message);
+        return output_fn(&format!("{} {}", color(prefix, Color::LightRed), message));
     }
 
+    // Attempt to read source file and locate error line
     let source = read_to_string(filename).ok();
-    let line_nr = source
-        .as_ref()
-        .and_then(|src| find_error_line_number(src))
-        .unwrap();
-    let lines = source.as_ref().map(|src| src.lines().collect::<Vec<_>>());
+    let Some(line_nr) = source.as_ref().and_then(|src| find_error_line_number(src)) else {
+        return output_fn(&format!("{} {}", color(prefix, Color::LightRed), message));
+    };
 
-    let mut formatted_message = String::new();
-    formatted_message.push_str(&color("─────────────────────────────────", Color::Gray));
-    formatted_message.push_str(&format!(
-        "\n{} {}\n",
+    // Build visual elements for error formatting
+    let horizontal_rule = color("─────────────────────────────────", Color::Gray);
+    let mut formatted_lines = vec![horizontal_rule.clone()];
+
+    // Add header with filename and line number
+    formatted_lines.push(format!(
+        "{} {}",
         color(prefix, Color::LightRed),
-        color(&format!("{filename}:{line_nr}"), Color::Underline)
+        color(&format!("{filename}:{line_nr}:1"), Color::Underline)
     ));
 
-    // Append the source line if available
-    if let (n, Some(lines)) = (line_nr, lines) {
-        if let Some(line) = lines.get(n - 1) {
-            let line_length = line.len();
-            let underline = format!(
-                " {}{} {} {}",
-                " ".repeat(n.to_string().len()),
-                color("|", Color::Gray),
-                color(&"‾".repeat(line_length), Color::Red),
-                color(&message, Color::Red)
-            );
-            formatted_message.push_str(&format!(
-                " {}{}\n{}{} {line}",
-                " ".repeat(n.to_string().len()),
-                color("|", Color::Gray),
-                color(&n.to_string(), Color::Gray),
+    // Add source code snippet if available
+    if let Some(line) = source.as_ref().and_then(|src| src.lines().nth(line_nr - 1)) {
+        let padding = " ".repeat(line_nr.to_string().len()); // Alignment spacing
+
+        formatted_lines.extend([
+            // Line number gutter
+            format!(" {padding}{}", color("|", Color::Gray)),
+            // Source code line
+            format!(
+                "{}{} {line}",
+                color(&line_nr.to_string(), Color::Gray),
                 color(" |", Color::Gray)
-            ));
-            formatted_message.push_str(&format!("\n{underline}"));
-            formatted_message.push_str(&color("\n─────────────────────────────────", Color::Gray));
-        }
+            ),
+            // Error underline and message
+            format!(
+                " {padding}{} {} {}",
+                color("|", Color::Gray),
+                color(&"‾".repeat(line.len()), Color::Red), // Red underline
+                color(&message, Color::Red)
+            ),
+            horizontal_rule, // Closing rule
+        ]);
     }
 
-    output_fn(&formatted_message);
+    output_fn(&formatted_lines.join("\n"));
 }
 
 /// Escapes backslashes and double quotes in a string for safe inclusion in string literals
