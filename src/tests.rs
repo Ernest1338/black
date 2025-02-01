@@ -387,7 +387,7 @@ fn cli_interpreter() {
 
 #[test]
 fn args_interpreter() {
-    let app_args = get_args(args(&["binary", "-i", "input"]));
+    let app_args = get_args(&args(&["binary", "-i", "input"]));
     assert!(
         app_args
             == AppArgs {
@@ -402,7 +402,7 @@ fn args_interpreter() {
 
 #[test]
 fn args_compiler_out() {
-    let app_args = get_args(args(&["binary", "-o", "outfile"]));
+    let app_args = get_args(&args(&["binary", "-o", "outfile"]));
     assert!(
         app_args
             == AppArgs {
@@ -417,7 +417,7 @@ fn args_compiler_out() {
 
 #[test]
 fn args_build_and_run_out() {
-    let app_args = get_args(args(&["binary", "-r", "-o", "outfile"]));
+    let app_args = get_args(&args(&["binary", "-r", "-o", "outfile"]));
     assert!(
         app_args
             == AppArgs {
@@ -428,7 +428,7 @@ fn args_build_and_run_out() {
                 output: PathBuf::from("outfile")
             }
     );
-    let app_args = get_args(args(&["binary", "-o", "outfile", "-r"]));
+    let app_args = get_args(&args(&["binary", "-o", "outfile", "-r"]));
     assert!(
         app_args
             == AppArgs {

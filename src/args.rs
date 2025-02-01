@@ -31,7 +31,7 @@ pub struct AppArgs {
     pub output: PathBuf,
 }
 
-pub fn get_args(args: Vec<String>) -> AppArgs {
+pub fn get_args(args: &Vec<String>) -> AppArgs {
     let mut args = args.iter().skip(1); // Skip the program name
 
     let mut input = None;
