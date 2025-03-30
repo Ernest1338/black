@@ -2,7 +2,7 @@
 
 use crate::{
     args::AppArgs,
-    parser::{type_check, Ast, BinExpr, FuncCall, Variable, VariableDeclaration},
+    parser::{type_check, Ast, BinExpr, Bool, FuncCall, Variable, VariableDeclaration},
     utils::{
         dbg, dbg_file_if_env, dbg_plain, escape_string, get_tmp_fname, measure_time, ErrorType,
     },
@@ -150,6 +150,10 @@ impl Compiler {
                         Variable::StringLiteral(_) => {
                             self.ir.push_str(&format!("  call $printf(l ${id})\n"))
                         }
+                        Variable::Bool(v) => match v {
+                            Bool::True => self.ir.push_str("  call $printf(l $str_true)\n"),
+                            Bool::False => self.ir.push_str("  call $printf(l $str_false)\n"),
+                        },
                     }
                 }
 
@@ -253,6 +257,11 @@ impl Compiler {
                 Variable::Number(0)
             }
 
+            Expr::Bool(v) => match v {
+                Bool::True => Variable::Bool(Bool::True),
+                Bool::False => Variable::Bool(Bool::False),
+            },
+
             _ => {
                 return Err("Can only store strings and numbers in variables".to_string());
             }
@@ -264,6 +273,31 @@ impl Compiler {
         Ok(())
     }
 
+    /// Evaluate one expression
+    pub fn evaluate_expr(&mut self, expr: &Expr) -> Result<(), ErrorType> {
+        match expr {
+            Expr::FuncCall(func_call) => self.handle_func_call(func_call)?,
+
+            Expr::VariableDeclaration(variable_declaration) => {
+                self.handle_var_decl(variable_declaration)?
+            }
+
+            Expr::Block(block) => {
+                for node in block {
+                    self.evaluate_expr(node)?;
+                }
+            }
+
+            _ => {
+                return Err(ErrorType::Generic(format!(
+                    "Expression `{expr:?}` in this context is not yet implemented"
+                )));
+            }
+        }
+
+        Ok(())
+    }
+
     /// Generates the intermediate representation (IR) for the AST and returns it as a string
     pub fn generate_ir(&mut self) -> Result<String, ErrorType> {
         self.ir.push_str("export function w $main() {\n@start\n");
@@ -271,19 +305,7 @@ impl Compiler {
         let ast = self.ast.clone();
 
         for node in &ast {
-            match node {
-                Expr::FuncCall(func_call) => self.handle_func_call(func_call)?,
-
-                Expr::VariableDeclaration(variable_declaration) => {
-                    self.handle_var_decl(variable_declaration)?
-                }
-
-                _ => {
-                    return Err(ErrorType::Generic(format!(
-                        "Expression `{node:?}` in this context is not yet implemented"
-                    )));
-                }
-            }
+            self.evaluate_expr(node)?;
         }
 
         self.ir.push_str("  ret 0\n}");

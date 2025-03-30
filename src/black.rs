@@ -14,6 +14,8 @@ use std::{
 // - fn expr
 // - type checker
 // - static qbe in release gh
+// - comments in the parser (will enable formatter)
+// - single quote support (should it do something different than double quotes? maybe multi line?)
 // - linter (another bin)
 // - formatter (another bin)
 // - build system (toml? github repos as packages. line eg. Ernest1338/package = "0.1")

@@ -496,3 +496,52 @@ fn err_var_type_str_but_not_str() {
     assert_error(get_compiler_res(code), &expected);
     assert_error(get_interpreter_res(code), &expected);
 }
+
+#[test]
+fn code_block() {
+    let code = r#"
+{
+    print("works")
+}"#;
+    let expected = "works";
+
+    assert!(interpret(code) == expected);
+    assert!(compile_and_run(code) == expected);
+}
+
+#[test]
+fn true_var() {
+    let code = r#"
+let a = true
+print(a)
+"#;
+    let expected = "true";
+
+    assert!(interpret(code) == expected);
+    assert!(compile_and_run(code) == expected);
+}
+
+#[test]
+fn false_var() {
+    let code = r#"
+let a = false
+print(a)
+"#;
+    let expected = "false";
+
+    assert!(interpret(code) == expected);
+    assert!(compile_and_run(code) == expected);
+}
+
+// #[test]
+// fn if_statement() {
+//     let code = r#"
+// if 1 == 1 {
+//     print("works")
+// }
+// "#;
+//     let expected = "works";
+//
+//     assert!(interpret(code) == expected);
+//     assert!(compile_and_run(code) == expected);
+// }

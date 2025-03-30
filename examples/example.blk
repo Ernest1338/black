@@ -18,11 +18,14 @@ print(greeting)
 let int sum = 1 + 1
 print(sum)
 
-// adding two variables together
-let a = 1
-let b = 2
-let c = a + b // inline comment
-print(c, a + b)
+// code block
+{
+    // adding two variables together
+    let a = 1
+    let b = 2
+    let c = a + b // inline comment
+    print(c, a + b)
+}
 
 // TODO:
 //

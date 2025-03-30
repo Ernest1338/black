@@ -8,6 +8,7 @@ use std::{fmt, iter::Peekable, slice::Iter, str::FromStr};
 pub enum Token {
     // Keywords
     Let,
+    If,
 
     // Operators
     Plus,
@@ -22,6 +23,8 @@ pub enum Token {
     // Punctuation
     LeftParen,
     RightParen,
+    LeftBrace,
+    RightBrace,
     Comma,
 
     // Identifiers
@@ -38,8 +41,15 @@ pub enum Type {
     Long,
     Float,
     Double,
+    Bool(Bool),
     Str,
     None,
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum Bool {
+    True,
+    False,
 }
 
 impl fmt::Display for Type {
@@ -50,6 +60,10 @@ impl fmt::Display for Type {
             Type::Float => "float",
             Type::Double => "double",
             Type::Str => "str",
+            Type::Bool(v) => match v {
+                Bool::True => "true",
+                Bool::False => "false",
+            },
             Type::None => "none",
         };
         write!(f, "{}", type_str)
@@ -71,22 +85,35 @@ impl Token {
     fn len(&self) -> usize {
         match self {
             Token::Let => 3,
+            Token::If => 2,
+
             Token::StringLiteral(s) => s.len() + 2, // Includes quotes
+            Token::Type(Type::Str) => 3,
+
             Token::Number(n) => n.to_string().len(),
             Token::Identifier(s) => s.len(),
+
             Token::LeftParen
             | Token::RightParen
+            | Token::LeftBrace
+            | Token::RightBrace
             | Token::Plus
             | Token::Minus
             | Token::Multiply
             | Token::Divide
             | Token::Equals
             | Token::Comma => 1,
+
             Token::Type(Type::Int) => 3,
             Token::Type(Type::Long) => 4,
             Token::Type(Type::Float) => 5,
             Token::Type(Type::Double) => 6,
-            Token::Type(Type::Str) => 3,
+
+            Token::Type(Type::Bool(v)) => match v {
+                Bool::True => 4,
+                Bool::False => 5,
+            },
+
             Token::Type(Type::None) => 0,
         }
     }
@@ -103,18 +130,27 @@ impl FromStr for Token {
             {
                 Some(token.clone())
             } else {
+                // NOTE: edge case when a token is at the end of the input so it doesn't have
+                //       whitespace after it
+                if s == keyword {
+                    return Some(token.clone());
+                }
                 None
             }
         }
 
         // Keywords and types
+        // NOTE: sort by length for faster tokenization
         let keywords = [
             ("let", Token::Let),
+            ("if", Token::If),
             ("int", Token::Type(Type::Int)),
+            ("str", Token::Type(Type::Str)),
             ("long", Token::Type(Type::Long)),
+            ("true", Token::Type(Type::Bool(Bool::True))),
+            ("false", Token::Type(Type::Bool(Bool::False))),
             ("float", Token::Type(Type::Float)),
             ("double", Token::Type(Type::Double)),
-            ("str", Token::Type(Type::Str)),
         ];
 
         for &(keyword, ref token) in &keywords {
@@ -155,6 +191,8 @@ impl FromStr for Token {
             ('/', Token::Divide),
             ('(', Token::LeftParen),
             (')', Token::RightParen),
+            ('{', Token::LeftBrace),
+            ('}', Token::RightBrace),
             ('=', Token::Equals),
             (',', Token::Comma),
         ];
@@ -209,11 +247,21 @@ pub fn lexer(input: &str) -> Result<Vec<Token>, ErrorType> {
 #[allow(clippy::enum_variant_names)]
 pub enum Expr {
     FuncCall(FuncCall),
+    IfStatement(Box<IfStatement>),
     VariableDeclaration(Box<VariableDeclaration>),
     BinExpr(Box<BinExpr>),
+    Block(Vec<Expr>),
     Number(i64),
+    Bool(Bool),
     Identifier(String),
     StringLiteral(String),
+}
+
+/// Represents a if statement in the AST
+#[derive(Debug, Clone, PartialEq)]
+pub struct IfStatement {
+    pub comparison: Expr,
+    pub block: Vec<Expr>,
 }
 
 /// Represents a variable declaration in the AST
@@ -266,6 +314,7 @@ impl BinOpKind {
 pub enum Variable {
     Number(i64),
     StringLiteral(String),
+    Bool(Bool),
 }
 
 /// Type alias for the AST, a list of expressions
@@ -295,6 +344,10 @@ impl<'a> Parser<'a> {
                     Ok(Expr::Identifier(name.to_owned()))
                 }
             }
+            Some(Token::Type(Type::Bool(v))) => match v {
+                Bool::True => Ok(Expr::Bool(Bool::True)),
+                Bool::False => Ok(Expr::Bool(Bool::False)),
+            },
             Some(Token::StringLiteral(s)) => Ok(Expr::StringLiteral(s.to_owned())), // Handle StringLiteral
             Some(Token::LeftParen) => {
                 let expr = self.parse_expr()?;
@@ -303,6 +356,7 @@ impl<'a> Parser<'a> {
                 }
                 Ok(expr)
             }
+            Some(Token::LeftBrace) => self.parse_block(), // Handle code block start
             Some(token) => Err(ErrorType::SyntaxError(format!(
                 "Unexpected token: {token:?}",
             ))),
@@ -310,6 +364,23 @@ impl<'a> Parser<'a> {
                 "Unexpected end of input".to_string(),
             )),
         }
+    }
+
+    /// Parses a code block: `{ expr1; expr2; ... }`
+    pub fn parse_block(&mut self) -> Result<Expr, ErrorType> {
+        let mut expressions = Vec::new();
+
+        // Continue parsing until we reach a RightBrace '}'
+        while let Some(token) = self.tokens.peek() {
+            if **token == Token::RightBrace {
+                self.tokens.next(); // Consume the '}'
+                break;
+            }
+            // Allow semicolons or newlines to separate expressions (optional)
+            expressions.push(self.parse_expr()?);
+        }
+
+        Ok(Expr::Block(expressions))
     }
 
     /// Parses function calls
@@ -388,6 +459,15 @@ impl<'a> Parser<'a> {
         })))
     }
 
+    // pub fn parse_if_statement(&mut self) -> Result<Expr, ErrorType> {
+    //     self.tokens.next(); // Consume `Token::If`
+    //
+    //     Ok(Expr::IfStatement(Box::new(IfStatement {
+    //         comparison: identifier.to_string(),
+    //         block,
+    //     })))
+    // }
+
     /// Parses binary expressions (e.g., addition, multiplication)
     pub fn parse_binary(&mut self, operators: &[Token]) -> Result<Expr, ErrorType> {
         let mut left = self.parse_primary()?;
@@ -431,6 +511,7 @@ impl<'a> Parser<'a> {
 
         match peek {
             Token::Let => self.parse_variable_declaration(),
+            // Token::If => self.parse_if_statement(),
             _ => self.parse_binary(&[Token::Multiply, Token::Divide, Token::Plus, Token::Minus]),
         }
     }

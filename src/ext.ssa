@@ -1,3 +1,5 @@
 data $fmt_int = { b "%i", b 0 }
 data $endl = { b "\n", b 0 }
 data $space = { b " ", b 0 }
+data $str_true = { b "true", b 0 }
+data $str_false = { b "false", b 0 }

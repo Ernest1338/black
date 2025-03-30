@@ -1,5 +1,5 @@
 use crate::{
-    parser::{type_check, Ast, BinExpr, BinOpKind, FuncCall, Variable, VariableDeclaration},
+    parser::{type_check, Ast, BinExpr, BinOpKind, Bool, FuncCall, Variable, VariableDeclaration},
     utils::ErrorType,
     Expr,
 };
@@ -12,6 +12,16 @@ impl fmt::Display for Variable {
         match self {
             Variable::Number(n) => write!(f, "{}", n),
             Variable::StringLiteral(s) => write!(f, "{}", s),
+            Variable::Bool(v) => {
+                write!(
+                    f,
+                    "{}",
+                    match v {
+                        Bool::True => "true",
+                        Bool::False => "false",
+                    }
+                )
+            }
         }
     }
 }
@@ -39,27 +49,43 @@ impl Interpreter {
         }
     }
 
+    /// Evaluate one expression
+    pub fn evaluate_expr(&mut self, expr: &Expr) -> Result<(), ErrorType> {
+        match expr {
+            Expr::FuncCall(func_call) => self.handle_func_call(&func_call)?,
+
+            Expr::VariableDeclaration(var_decl) => self.handle_var_decl(&var_decl)?,
+
+            Expr::Identifier(id) => {
+                // If it's a valid variable, print it
+                // Probably only useful in the interactive mode
+                // Should we only restrict this code to such condition?
+                let var = self.get_var(&id)?;
+                println!("{var}");
+            }
+
+            Expr::Block(block) => {
+                for node in block {
+                    self.evaluate_expr(node)?;
+                }
+            }
+
+            _ => {
+                return Err(ErrorType::Generic(format!(
+                    "Expression `{expr:?}` in this context is not yet implemented"
+                )))
+            }
+        }
+
+        Ok(())
+    }
+
     /// Runs the interpreter, processing each expression in the AST
     pub fn run(&mut self) -> Result<(), ErrorType> {
         let ast = self.ast.clone();
 
         for node in &ast {
-            match node {
-                Expr::FuncCall(func_call) => self.handle_func_call(func_call)?,
-                Expr::VariableDeclaration(var_decl) => self.handle_var_decl(var_decl)?,
-                Expr::Identifier(id) => {
-                    // If it's a valid variable, print it
-                    // Probably only useful in the interactive mode
-                    // Should we only restrict this code to such condition?
-                    let var = self.get_var(id)?;
-                    println!("{var}");
-                }
-                _ => {
-                    return Err(ErrorType::Generic(format!(
-                        "Expression `{node:?}` in this context is not yet implemented"
-                    )))
-                }
-            }
+            self.evaluate_expr(node)?;
         }
 
         Ok(())
@@ -157,6 +183,10 @@ impl Interpreter {
             variable_declaration.identifier.clone(),
             match &variable_declaration.value {
                 Expr::Number(n) => Variable::Number(*n),
+                Expr::Bool(v) => match v {
+                    Bool::True => Variable::Bool(Bool::True),
+                    Bool::False => Variable::Bool(Bool::False),
+                },
                 Expr::StringLiteral(s) => Variable::StringLiteral(s.to_owned()),
                 Expr::BinExpr(bin_expr) => Variable::Number(self.handle_bin_expr(bin_expr)?),
                 _ => {
