@@ -19,8 +19,8 @@ let int sum = 1 + 1
 print(sum)
 
 // bool value support
-let bool thisorthat = true
-print(thisorthat, false)
+let bool this_or_that = true
+print(this_or_that, false)
 
 // code block
 {
