@@ -185,9 +185,12 @@ impl FromStr for Token {
             }
         }
 
-        // Identifier
-        if s.starts_with(|c: char| c.is_alphabetic()) {
-            let identifier: String = s.chars().take_while(|c| c.is_alphanumeric()).collect();
+        // Identifier (allow underscores in names)
+        if s.starts_with(|c: char| c.is_alphabetic() || c == '_') {
+            let identifier: String = s
+                .chars()
+                .take_while(|c| c.is_alphanumeric() || *c == '_')
+                .collect();
             return Ok(Token::Identifier(identifier));
         }
 
