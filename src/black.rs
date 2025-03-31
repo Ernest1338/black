@@ -10,6 +10,7 @@ use std::{
 };
 
 // TODO:
+// - underscores in variable names
 // - if, else expr
 // - fn expr
 // - type checker

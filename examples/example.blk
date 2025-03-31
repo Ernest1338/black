@@ -18,6 +18,10 @@ print(greeting)
 let int sum = 1 + 1
 print(sum)
 
+// bool value support
+let bool thisorthat = true
+print(thisorthat, false)
+
 // code block
 {
     // adding two variables together

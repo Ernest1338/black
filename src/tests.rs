@@ -328,6 +328,7 @@ hello 123
 6
 hello, sailor
 2
+true false
 3 3";
     assert!(interpret(code) == expected);
     assert!(compile_and_run(code) == expected);
@@ -522,10 +523,32 @@ print(a)
 }
 
 #[test]
+fn print_true() {
+    let code = r#"
+print(true)
+"#;
+    let expected = "true";
+
+    assert!(interpret(code) == expected);
+    assert!(compile_and_run(code) == expected);
+}
+
+#[test]
 fn false_var() {
     let code = r#"
 let a = false
 print(a)
+"#;
+    let expected = "false";
+
+    assert!(interpret(code) == expected);
+    assert!(compile_and_run(code) == expected);
+}
+
+#[test]
+fn print_false() {
+    let code = r#"
+print(false)
 "#;
     let expected = "false";
 

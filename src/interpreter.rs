@@ -151,6 +151,10 @@ impl Interpreter {
                 Expr::Number(n) => print!("{n}"),
                 Expr::Identifier(id) => print!("{}", self.get_var(id)?),
                 Expr::StringLiteral(s) => print!("{s}"),
+                Expr::Bool(v) => match v {
+                    Bool::True => print!("true"),
+                    Bool::False => print!("false"),
+                },
                 _ => {
                     return Err("Invalid argument to print".to_string());
                 }

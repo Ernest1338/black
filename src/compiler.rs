@@ -157,6 +157,11 @@ impl Compiler {
                     }
                 }
 
+                Expr::Bool(v) => match v {
+                    Bool::True => self.ir.push_str("  call $printf(l $str_true)\n"),
+                    Bool::False => self.ir.push_str("  call $printf(l $str_false)\n"),
+                },
+
                 _ => {
                     return Err("Invalid argument to print".to_string());
                 }

@@ -9,6 +9,8 @@ pub enum Token {
     // Keywords
     Let,
     If,
+    True,
+    False,
 
     // Operators
     Plus,
@@ -33,6 +35,7 @@ pub enum Token {
     // Literals
     Number(i64),
     StringLiteral(String),
+    Bool(Bool),
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -41,7 +44,7 @@ pub enum Type {
     Long,
     Float,
     Double,
-    Bool(Bool),
+    Bool,
     Str,
     None,
 }
@@ -60,10 +63,7 @@ impl fmt::Display for Type {
             Type::Float => "float",
             Type::Double => "double",
             Type::Str => "str",
-            Type::Bool(v) => match v {
-                Bool::True => "true",
-                Bool::False => "false",
-            },
+            Type::Bool => "bool",
             Type::None => "none",
         };
         write!(f, "{}", type_str)
@@ -77,6 +77,7 @@ pub fn type_check(var_type: &Type, value: &Expr) -> bool {
             | (Type::Int, Expr::Number(_) | Expr::BinExpr(_))
             | (Type::Float, Expr::Number(_) | Expr::BinExpr(_))
             | (Type::Double, Expr::Number(_) | Expr::BinExpr(_))
+            | (Type::Bool, Expr::Bool(_))
     )
 }
 
@@ -109,10 +110,13 @@ impl Token {
             Token::Type(Type::Float) => 5,
             Token::Type(Type::Double) => 6,
 
-            Token::Type(Type::Bool(v)) => match v {
+            Token::Type(Type::Bool) => 4,
+            Token::Bool(v) => match v {
                 Bool::True => 4,
                 Bool::False => 5,
             },
+            Token::True => 4,
+            Token::False => 5,
 
             Token::Type(Type::None) => 0,
         }
@@ -124,19 +128,22 @@ impl FromStr for Token {
 
     /// Parses a string into a Token, if possible
     fn from_str(s: &str) -> Result<Token, ()> {
+        // println!("fromstr: {s}");
         // Helper for parsing keywords followed by whitespace
         fn parse_keyword(s: &str, keyword: &str, token: &Token) -> Option<Token> {
-            if s.starts_with(keyword) && s[keyword.len()..].starts_with(|c: char| c.is_whitespace())
-            {
-                Some(token.clone())
-            } else {
-                // NOTE: edge case when a token is at the end of the input so it doesn't have
-                //       whitespace after it
-                if s == keyword {
+            if s.starts_with(keyword) {
+                let rest = &s[keyword.len()..];
+                if rest.is_empty()
+                    || rest
+                        .chars()
+                        .next()
+                        .map(|c| !c.is_alphanumeric())
+                        .unwrap_or(false)
+                {
                     return Some(token.clone());
                 }
-                None
             }
+            None
         }
 
         // Keywords and types
@@ -146,9 +153,10 @@ impl FromStr for Token {
             ("if", Token::If),
             ("int", Token::Type(Type::Int)),
             ("str", Token::Type(Type::Str)),
+            ("bool", Token::Type(Type::Bool)),
             ("long", Token::Type(Type::Long)),
-            ("true", Token::Type(Type::Bool(Bool::True))),
-            ("false", Token::Type(Type::Bool(Bool::False))),
+            ("true", Token::True),
+            ("false", Token::False),
             ("float", Token::Type(Type::Float)),
             ("double", Token::Type(Type::Double)),
         ];
@@ -337,17 +345,12 @@ impl<'a> Parser<'a> {
     pub fn parse_primary(&mut self) -> Result<Expr, ErrorType> {
         match self.tokens.next() {
             Some(Token::Number(n)) => Ok(Expr::Number(*n)),
-            Some(Token::Identifier(name)) => {
-                if let Some(Token::LeftParen) = self.tokens.peek() {
-                    self.parse_func_call(name)
-                } else {
-                    Ok(Expr::Identifier(name.to_owned()))
-                }
-            }
-            Some(Token::Type(Type::Bool(v))) => match v {
+            Some(Token::Bool(v)) => match v {
                 Bool::True => Ok(Expr::Bool(Bool::True)),
                 Bool::False => Ok(Expr::Bool(Bool::False)),
             },
+            Some(Token::True) => Ok(Expr::Bool(Bool::True)),
+            Some(Token::False) => Ok(Expr::Bool(Bool::False)),
             Some(Token::StringLiteral(s)) => Ok(Expr::StringLiteral(s.to_owned())), // Handle StringLiteral
             Some(Token::LeftParen) => {
                 let expr = self.parse_expr()?;
@@ -357,6 +360,13 @@ impl<'a> Parser<'a> {
                 Ok(expr)
             }
             Some(Token::LeftBrace) => self.parse_block(), // Handle code block start
+            Some(Token::Identifier(name)) => {
+                if let Some(Token::LeftParen) = self.tokens.peek() {
+                    self.parse_func_call(name)
+                } else {
+                    Ok(Expr::Identifier(name.to_owned()))
+                }
+            }
             Some(token) => Err(ErrorType::SyntaxError(format!(
                 "Unexpected token: {token:?}",
             ))),
