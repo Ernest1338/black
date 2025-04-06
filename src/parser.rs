@@ -11,6 +11,7 @@ pub enum Token {
     If,
     True,
     False,
+    Return,
 
     // Operators
     Plus,
@@ -87,6 +88,7 @@ impl Token {
         match self {
             Token::Let => 3,
             Token::If => 2,
+            Token::Return => 6,
 
             Token::StringLiteral(s) => s.len() + 2, // Includes quotes
             Token::Type(Type::Str) => 3,
@@ -159,6 +161,7 @@ impl FromStr for Token {
             ("false", Token::False),
             ("float", Token::Type(Type::Float)),
             ("double", Token::Type(Type::Double)),
+            ("return", Token::Return),
         ];
 
         for &(keyword, ref token) in &keywords {
@@ -266,6 +269,7 @@ pub enum Expr {
     Bool(Bool),
     Identifier(String),
     StringLiteral(String),
+    Return(Box<Expr>),
 }
 
 /// Represents a if statement in the AST
@@ -472,6 +476,13 @@ impl<'a> Parser<'a> {
         })))
     }
 
+    /// Parses return statement
+    pub fn parse_return(&mut self) -> Result<Expr, ErrorType> {
+        self.tokens.next(); // Consume `Token::Return`
+
+        Ok(Expr::Return(Box::new(self.parse_expr()?)))
+    }
+
     // pub fn parse_if_statement(&mut self) -> Result<Expr, ErrorType> {
     //     self.tokens.next(); // Consume `Token::If`
     //
@@ -524,6 +535,7 @@ impl<'a> Parser<'a> {
 
         match peek {
             Token::Let => self.parse_variable_declaration(),
+            Token::Return => self.parse_return(),
             // Token::If => self.parse_if_statement(),
             _ => self.parse_binary(&[Token::Multiply, Token::Divide, Token::Plus, Token::Minus]),
         }
