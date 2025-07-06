@@ -19,6 +19,14 @@ pub enum Token {
     Multiply,
     Divide,
     Equals,
+    
+    // Comparison operators
+    EqualEqual,
+    NotEqual,
+    LessThan,
+    GreaterThan,
+    LessEqual,
+    GreaterEqual,
 
     // Types
     Type(Type),
@@ -105,7 +113,14 @@ impl Token {
             | Token::Multiply
             | Token::Divide
             | Token::Equals
+            | Token::LessThan
+            | Token::GreaterThan
             | Token::Comma => 1,
+
+            Token::EqualEqual
+            | Token::NotEqual
+            | Token::LessEqual
+            | Token::GreaterEqual => 2,
 
             Token::Type(Type::Int) => 3,
             Token::Type(Type::Long) => 4,
@@ -197,6 +212,20 @@ impl FromStr for Token {
             return Ok(Token::Identifier(identifier));
         }
 
+        // Multi-character operators (check these first)
+        let multi_char_operators = [
+            ("==", Token::EqualEqual),
+            ("!=", Token::NotEqual),
+            ("<=", Token::LessEqual),
+            (">=", Token::GreaterEqual),
+        ];
+
+        for &(op, ref token) in &multi_char_operators {
+            if s.starts_with(op) {
+                return Ok(token.clone());
+            }
+        }
+
         // Single-character tokens
         let single_char_tokens = [
             ('+', Token::Plus),
@@ -208,6 +237,8 @@ impl FromStr for Token {
             ('{', Token::LeftBrace),
             ('}', Token::RightBrace),
             ('=', Token::Equals),
+            ('<', Token::LessThan),
+            ('>', Token::GreaterThan),
             (',', Token::Comma),
         ];
 
@@ -309,6 +340,14 @@ pub enum BinOpKind {
     Minus,
     Multiply,
     Divide,
+    
+    // Comparison operators
+    EqualEqual,
+    NotEqual,
+    LessThan,
+    GreaterThan,
+    LessEqual,
+    GreaterEqual,
 }
 
 impl BinOpKind {
@@ -319,6 +358,12 @@ impl BinOpKind {
             BinOpKind::Minus => "sub",
             BinOpKind::Multiply => "mul",
             BinOpKind::Divide => "div",
+            BinOpKind::EqualEqual => "ceqw",
+            BinOpKind::NotEqual => "cnew",
+            BinOpKind::LessThan => "csltw",
+            BinOpKind::GreaterThan => "csgtw",
+            BinOpKind::LessEqual => "cslew",
+            BinOpKind::GreaterEqual => "csgew",
         }
     }
 }
@@ -483,14 +528,33 @@ impl<'a> Parser<'a> {
         Ok(Expr::Return(Box::new(self.parse_expr()?)))
     }
 
-    // pub fn parse_if_statement(&mut self) -> Result<Expr, ErrorType> {
-    //     self.tokens.next(); // Consume `Token::If`
-    //
-    //     Ok(Expr::IfStatement(Box::new(IfStatement {
-    //         comparison: identifier.to_string(),
-    //         block,
-    //     })))
-    // }
+    /// Parses if statement
+    pub fn parse_if_statement(&mut self) -> Result<Expr, ErrorType> {
+        self.tokens.next(); // Consume `Token::If`
+        
+        // Parse the condition expression
+        let condition = self.parse_expr()?;
+        
+        // Expect a left brace to start the block
+        if self.tokens.next() != Some(&Token::LeftBrace) {
+            return Err(ErrorType::SyntaxError("Expected '{' after if condition".to_string()));
+        }
+        
+        // Parse the block body
+        let block = self.parse_block()?;
+        
+        // Extract the block expressions
+        let block_exprs = if let Expr::Block(exprs) = block {
+            exprs
+        } else {
+            return Err(ErrorType::SyntaxError("Expected block after if condition".to_string()));
+        };
+        
+        Ok(Expr::IfStatement(Box::new(IfStatement {
+            comparison: condition,
+            block: block_exprs,
+        })))
+    }
 
     /// Parses binary expressions (e.g., addition, multiplication)
     pub fn parse_binary(&mut self, operators: &[Token]) -> Result<Expr, ErrorType> {
@@ -503,6 +567,12 @@ impl<'a> Parser<'a> {
                     Token::Minus => BinOpKind::Minus,
                     Token::Multiply => BinOpKind::Multiply,
                     Token::Divide => BinOpKind::Divide,
+                    Token::EqualEqual => BinOpKind::EqualEqual,
+                    Token::NotEqual => BinOpKind::NotEqual,
+                    Token::LessThan => BinOpKind::LessThan,
+                    Token::GreaterThan => BinOpKind::GreaterThan,
+                    Token::LessEqual => BinOpKind::LessEqual,
+                    Token::GreaterEqual => BinOpKind::GreaterEqual,
                     _ => unreachable!(),
                 };
                 self.tokens.next(); // Consume operator
@@ -536,8 +606,37 @@ impl<'a> Parser<'a> {
         match peek {
             Token::Let => self.parse_variable_declaration(),
             Token::Return => self.parse_return(),
-            // Token::If => self.parse_if_statement(),
-            _ => self.parse_binary(&[Token::Multiply, Token::Divide, Token::Plus, Token::Minus]),
+            Token::If => self.parse_if_statement(),
+            _ => {
+                // Parse with operator precedence: comparison operators have lower precedence
+                let arithmetic_expr = self.parse_binary(&[Token::Multiply, Token::Divide, Token::Plus, Token::Minus])?;
+                
+                // Check for comparison operators
+                if let Some(op) = self.tokens.peek() {
+                    if matches!(op, Token::EqualEqual | Token::NotEqual | Token::LessThan | Token::GreaterThan | Token::LessEqual | Token::GreaterEqual) {
+                        let operator = match op {
+                            Token::EqualEqual => BinOpKind::EqualEqual,
+                            Token::NotEqual => BinOpKind::NotEqual,
+                            Token::LessThan => BinOpKind::LessThan,
+                            Token::GreaterThan => BinOpKind::GreaterThan,
+                            Token::LessEqual => BinOpKind::LessEqual,
+                            Token::GreaterEqual => BinOpKind::GreaterEqual,
+                            _ => unreachable!(),
+                        };
+                        self.tokens.next(); // Consume comparison operator
+                        
+                        let right = self.parse_binary(&[Token::Multiply, Token::Divide, Token::Plus, Token::Minus])?;
+                        
+                        return Ok(Expr::BinExpr(Box::new(BinExpr {
+                            lhs: arithmetic_expr,
+                            kind: operator,
+                            rhs: right,
+                        })));
+                    }
+                }
+                
+                Ok(arithmetic_expr)
+            }
         }
     }
 

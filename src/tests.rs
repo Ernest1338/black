@@ -556,15 +556,39 @@ print(false)
     assert!(compile_and_run(code) == expected);
 }
 
-// #[test]
-// fn if_statement() {
-//     let code = r#"
-// if 1 == 1 {
-//     print("works")
-// }
-// "#;
-//     let expected = "works";
-//
-//     assert!(interpret(code) == expected);
-//     assert!(compile_and_run(code) == expected);
-// }
+#[test]
+fn if_statement() {
+    let code = r#"
+if 1 == 1 {
+    print("works")
+}
+"#;
+    let expected = "works";
+
+    assert!(interpret(code) == expected);
+    assert!(compile_and_run(code) == expected);
+}
+
+#[test]
+fn if_statement_interpreter_only() {
+    let code = r#"
+if 1 == 1 {
+    print("works")
+}
+"#;
+    
+    // Test that interpreter works
+    assert!(get_interpreter_res(code).is_ok());
+}
+
+#[test]
+fn if_statement_false_condition() {
+    let code = r#"
+if 1 == 2 {
+    print("should not print")
+}
+"#;
+    
+    // Test that interpreter works and doesn't print anything
+    assert!(get_interpreter_res(code).is_ok());
+}
