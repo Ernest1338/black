@@ -208,13 +208,36 @@ impl Interpreter {
 
     /// Handles if statement evaluation
     fn handle_if_statement(&mut self, if_stmt: &IfStatement) -> Result<(), String> {
-        // Evaluate the condition
+        // Evaluate the main if condition
         let condition_result = self.evaluate_condition(&if_stmt.comparison)?;
         
-        // If condition is true, execute the block
         if condition_result {
+            // If condition is true, execute the main if block
             for expr in &if_stmt.block {
                 self.evaluate_expr(expr).map_err(|e| format!("Error in if block: {e:?}"))?;
+            }
+        } else {
+            // Check else if branches
+            let mut executed = false;
+            for (else_if_condition, else_if_block) in &if_stmt.else_if_branches {
+                let else_if_result = self.evaluate_condition(else_if_condition)?;
+                if else_if_result {
+                    // Execute this else if block
+                    for expr in else_if_block {
+                        self.evaluate_expr(expr).map_err(|e| format!("Error in else if block: {e:?}"))?;
+                    }
+                    executed = true;
+                    break;
+                }
+            }
+            
+            // If no else if was executed, check for else block
+            if !executed {
+                if let Some(else_block) = &if_stmt.else_block {
+                    for expr in else_block {
+                        self.evaluate_expr(expr).map_err(|e| format!("Error in else block: {e:?}"))?;
+                    }
+                }
             }
         }
         

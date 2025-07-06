@@ -592,3 +592,164 @@ if 1 == 2 {
     // Test that interpreter works and doesn't print anything
     assert!(get_interpreter_res(code).is_ok());
 }
+
+#[test]
+fn if_else_statement() {
+    let code = r#"
+if 1 == 2 {
+    print("should not print")
+} else {
+    print("else works")
+}
+"#;
+    let expected = "else works";
+
+    assert!(interpret(code) == expected);
+    // Note: Compiler support for if statements is not implemented yet
+    // assert!(compile_and_run(code) == expected);
+}
+
+#[test]
+fn if_else_if_statement() {
+    let code = r#"
+if 1 == 2 {
+    print("should not print")
+} else if 2 == 2 {
+    print("else if works")
+} else {
+    print("should not print")
+}
+"#;
+    let expected = "else if works";
+
+    assert!(interpret(code) == expected);
+    // Note: Compiler support for if statements is not implemented yet
+    // assert!(compile_and_run(code) == expected);
+}
+
+#[test]
+fn if_else_if_else_statement() {
+    let code = r#"
+if 1 == 2 {
+    print("should not print")
+} else if 3 == 2 {
+    print("should not print")
+} else {
+    print("final else works")
+}
+"#;
+    let expected = "final else works";
+
+    assert!(interpret(code) == expected);
+    // Note: Compiler support for if statements is not implemented yet
+    // assert!(compile_and_run(code) == expected);
+}
+
+#[test]
+fn multiple_else_if_statements() {
+    let code = r#"
+if 1 == 2 {
+    print("should not print")
+} else if 2 == 3 {
+    print("should not print")
+} else if 3 == 3 {
+    print("third condition works")
+} else if 4 == 4 {
+    print("should not print")
+} else {
+    print("should not print")
+}
+"#;
+    let expected = "third condition works";
+
+    assert!(interpret(code) == expected);
+    // Note: Compiler support for if statements is not implemented yet
+    // assert!(compile_and_run(code) == expected);
+}
+
+#[test]
+fn if_else_with_multiple_statements() {
+    let code = r#"
+if 1 == 2 {
+    print("should not print")
+} else {
+    print("first statement")
+    print("second statement")
+    let x = 42
+    print(x)
+}
+"#;
+    let expected = "first statement\nsecond statement\n42";
+
+    assert!(interpret(code) == expected);
+    // Note: Compiler support for if statements is not implemented yet
+    // assert!(compile_and_run(code) == expected);
+}
+
+#[test]
+fn if_else_if_with_variables() {
+    let code = r#"
+let condition1 = false
+let condition2 = true
+if condition1 {
+    print("should not print")
+} else if condition2 {
+    print("variable condition works")
+} else {
+    print("should not print")
+}
+"#;
+    let expected = "variable condition works";
+
+    assert!(interpret(code) == expected);
+    // Note: Compiler support for if statements is not implemented yet
+    // assert!(compile_and_run(code) == expected);
+}
+
+#[test]
+fn if_else_if_with_arithmetic() {
+    let code = r#"
+if 2 + 2 == 5 {
+    print("should not print")
+} else if 3 * 3 == 9 {
+    print("arithmetic in else if works")
+} else {
+    print("should not print")
+}
+"#;
+    let expected = "arithmetic in else if works";
+
+    assert!(interpret(code) == expected);
+    // Note: Compiler support for if statements is not implemented yet
+    // assert!(compile_and_run(code) == expected);
+}
+
+#[test]
+fn if_else_interpreter_only() {
+    let code = r#"
+if 1 == 2 {
+    print("should not print")
+} else {
+    print("else works")
+}
+"#;
+    
+    // Test that interpreter works
+    assert!(get_interpreter_res(code).is_ok());
+}
+
+#[test]
+fn if_else_if_interpreter_only() {
+    let code = r#"
+if 1 == 2 {
+    print("should not print")
+} else if 2 == 2 {
+    print("else if works")
+} else {
+    print("should not print")
+}
+"#;
+    
+    // Test that interpreter works
+    assert!(get_interpreter_res(code).is_ok());
+}

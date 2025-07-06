@@ -9,6 +9,7 @@ pub enum Token {
     // Keywords
     Let,
     If,
+    Else,
     True,
     False,
     Return,
@@ -96,6 +97,7 @@ impl Token {
         match self {
             Token::Let => 3,
             Token::If => 2,
+            Token::Else => 4,
             Token::Return => 6,
 
             Token::StringLiteral(s) => s.len() + 2, // Includes quotes
@@ -168,6 +170,7 @@ impl FromStr for Token {
         let keywords = [
             ("let", Token::Let),
             ("if", Token::If),
+            ("else", Token::Else),
             ("int", Token::Type(Type::Int)),
             ("str", Token::Type(Type::Str)),
             ("bool", Token::Type(Type::Bool)),
@@ -308,6 +311,8 @@ pub enum Expr {
 pub struct IfStatement {
     pub comparison: Expr,
     pub block: Vec<Expr>,
+    pub else_if_branches: Vec<(Expr, Vec<Expr>)>, // (condition, block) pairs
+    pub else_block: Option<Vec<Expr>>,
 }
 
 /// Represents a variable declaration in the AST
@@ -550,9 +555,65 @@ impl<'a> Parser<'a> {
             return Err(ErrorType::SyntaxError("Expected block after if condition".to_string()));
         };
         
+        // Parse else if branches
+        let mut else_if_branches = Vec::new();
+        let mut else_block = None;
+        
+        // Check for else if and else clauses
+        while let Some(Token::Else) = self.tokens.peek() {
+            self.tokens.next(); // Consume `Token::Else`
+            
+            // Check if this is else if or just else
+            if let Some(Token::If) = self.tokens.peek() {
+                // This is else if
+                self.tokens.next(); // Consume `Token::If`
+                
+                // Parse the else if condition
+                let else_if_condition = self.parse_expr()?;
+                
+                // Expect a left brace to start the block
+                if self.tokens.next() != Some(&Token::LeftBrace) {
+                    return Err(ErrorType::SyntaxError("Expected '{' after else if condition".to_string()));
+                }
+                
+                // Parse the else if block
+                let else_if_block = self.parse_block()?;
+                
+                // Extract the block expressions
+                let else_if_block_exprs = if let Expr::Block(exprs) = else_if_block {
+                    exprs
+                } else {
+                    return Err(ErrorType::SyntaxError("Expected block after else if condition".to_string()));
+                };
+                
+                else_if_branches.push((else_if_condition, else_if_block_exprs));
+            } else {
+                // This is just else
+                // Expect a left brace to start the block
+                if self.tokens.next() != Some(&Token::LeftBrace) {
+                    return Err(ErrorType::SyntaxError("Expected '{' after else".to_string()));
+                }
+                
+                // Parse the else block
+                let else_block_expr = self.parse_block()?;
+                
+                // Extract the block expressions
+                let else_block_exprs = if let Expr::Block(exprs) = else_block_expr {
+                    exprs
+                } else {
+                    return Err(ErrorType::SyntaxError("Expected block after else".to_string()));
+                };
+                
+                else_block = Some(else_block_exprs);
+                break; // else must be the last clause
+            }
+        }
+        
         Ok(Expr::IfStatement(Box::new(IfStatement {
             comparison: condition,
             block: block_exprs,
+            else_if_branches,
+            else_block,
         })))
     }
 
