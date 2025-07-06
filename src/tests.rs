@@ -753,3 +753,90 @@ if 1 == 2 {
     // Test that interpreter works
     assert!(get_interpreter_res(code).is_ok());
 }
+
+#[test]
+fn test_if_statement_compiler_ir_generation() {
+    // Test that the compiler can generate IR for if statements
+    let code = r#"
+if 1 == 1 {
+    print("works")
+}
+"#;
+    
+    let processed_code = preprocess(code);
+    let tokens = lexer(&processed_code).expect("Lexing failed");
+    let mut parser = Parser::new(&tokens);
+    let ast = parser.parse().expect("Parsing failed");
+    
+    let mut compiler = Compiler::from_ast(ast);
+    let ir = compiler.generate_ir().expect("IR generation failed");
+    
+    // Check that the IR contains the expected elements
+    assert!(ir.contains("ceqw 1, 1"));  // Comparison
+    assert!(ir.contains("jnz"));        // Conditional jump
+    assert!(ir.contains("@if"));        // If label
+    assert!(ir.contains("@end"));       // End label
+    assert!(ir.contains("works"));      // String literal
+}
+
+#[test]
+fn test_if_else_statement_compiler_ir_generation() {
+    // Test that the compiler can generate IR for if-else statements
+    let code = r#"
+if 1 == 2 {
+    print("should not print")
+} else {
+    print("else works")
+}
+"#;
+    
+    let processed_code = preprocess(code);
+    let tokens = lexer(&processed_code).expect("Lexing failed");
+    let mut parser = Parser::new(&tokens);
+    let ast = parser.parse().expect("Parsing failed");
+    
+    let mut compiler = Compiler::from_ast(ast);
+    let ir = compiler.generate_ir().expect("IR generation failed");
+    
+    // Check that the IR contains the expected elements
+    assert!(ir.contains("ceqw 1, 2"));  // Comparison
+    assert!(ir.contains("jnz"));        // Conditional jump
+    assert!(ir.contains("@if"));        // If label
+    assert!(ir.contains("@else"));      // Else label
+    assert!(ir.contains("@end"));       // End label
+    assert!(ir.contains("should not print"));
+    assert!(ir.contains("else works"));
+}
+
+#[test]
+fn test_if_else_if_statement_compiler_ir_generation() {
+    // Test that the compiler can generate IR for if-else if-else statements
+    let code = r#"
+if 1 == 2 {
+    print("first")
+} else if 2 == 2 {
+    print("second")
+} else {
+    print("third")
+}
+"#;
+    
+    let processed_code = preprocess(code);
+    let tokens = lexer(&processed_code).expect("Lexing failed");
+    let mut parser = Parser::new(&tokens);
+    let ast = parser.parse().expect("Parsing failed");
+    
+    let mut compiler = Compiler::from_ast(ast);
+    let ir = compiler.generate_ir().expect("IR generation failed");
+    
+    // Check that the IR contains the expected elements
+    assert!(ir.contains("ceqw 1, 2"));  // First comparison
+    assert!(ir.contains("ceqw 2, 2"));  // Second comparison
+    assert!(ir.contains("@elseif"));    // Else if label
+    assert!(ir.contains("@elseif_block")); // Else if block label
+    assert!(ir.contains("@else"));      // Else label
+    assert!(ir.contains("@end"));       // End label
+    assert!(ir.contains("first"));
+    assert!(ir.contains("second"));
+    assert!(ir.contains("third"));
+}
