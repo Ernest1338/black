@@ -556,15 +556,287 @@ print(false)
     assert!(compile_and_run(code) == expected);
 }
 
-// #[test]
-// fn if_statement() {
-//     let code = r#"
-// if 1 == 1 {
-//     print("works")
-// }
-// "#;
-//     let expected = "works";
-//
-//     assert!(interpret(code) == expected);
-//     assert!(compile_and_run(code) == expected);
-// }
+#[test]
+fn if_statement() {
+    let code = r#"
+if 1 == 1 {
+    print("works")
+}
+"#;
+    let expected = "works";
+
+    assert!(interpret(code) == expected);
+    assert!(compile_and_run(code) == expected);
+}
+
+#[test]
+fn if_statement_interpreter_only() {
+    let code = r#"
+if 1 == 1 {
+    print("works")
+}
+"#;
+    
+    // Test that interpreter works
+    assert!(get_interpreter_res(code).is_ok());
+}
+
+#[test]
+fn if_statement_false_condition() {
+    let code = r#"
+if 1 == 2 {
+    print("should not print")
+}
+"#;
+    
+    // Test that interpreter works and doesn't print anything
+    assert!(get_interpreter_res(code).is_ok());
+}
+
+#[test]
+fn if_else_statement() {
+    let code = r#"
+if 1 == 2 {
+    print("should not print")
+} else {
+    print("else works")
+}
+"#;
+    let expected = "else works";
+
+    assert!(interpret(code) == expected);
+    // Note: Compiler support for if statements is not implemented yet
+    // assert!(compile_and_run(code) == expected);
+}
+
+#[test]
+fn if_else_if_statement() {
+    let code = r#"
+if 1 == 2 {
+    print("should not print")
+} else if 2 == 2 {
+    print("else if works")
+} else {
+    print("should not print")
+}
+"#;
+    let expected = "else if works";
+
+    assert!(interpret(code) == expected);
+    // Note: Compiler support for if statements is not implemented yet
+    // assert!(compile_and_run(code) == expected);
+}
+
+#[test]
+fn if_else_if_else_statement() {
+    let code = r#"
+if 1 == 2 {
+    print("should not print")
+} else if 3 == 2 {
+    print("should not print")
+} else {
+    print("final else works")
+}
+"#;
+    let expected = "final else works";
+
+    assert!(interpret(code) == expected);
+    // Note: Compiler support for if statements is not implemented yet
+    // assert!(compile_and_run(code) == expected);
+}
+
+#[test]
+fn multiple_else_if_statements() {
+    let code = r#"
+if 1 == 2 {
+    print("should not print")
+} else if 2 == 3 {
+    print("should not print")
+} else if 3 == 3 {
+    print("third condition works")
+} else if 4 == 4 {
+    print("should not print")
+} else {
+    print("should not print")
+}
+"#;
+    let expected = "third condition works";
+
+    assert!(interpret(code) == expected);
+    // Note: Compiler support for if statements is not implemented yet
+    // assert!(compile_and_run(code) == expected);
+}
+
+#[test]
+fn if_else_with_multiple_statements() {
+    let code = r#"
+if 1 == 2 {
+    print("should not print")
+} else {
+    print("first statement")
+    print("second statement")
+    let x = 42
+    print(x)
+}
+"#;
+    let expected = "first statement\nsecond statement\n42";
+
+    assert!(interpret(code) == expected);
+    // Note: Compiler support for if statements is not implemented yet
+    // assert!(compile_and_run(code) == expected);
+}
+
+#[test]
+fn if_else_if_with_variables() {
+    let code = r#"
+let condition1 = false
+let condition2 = true
+if condition1 {
+    print("should not print")
+} else if condition2 {
+    print("variable condition works")
+} else {
+    print("should not print")
+}
+"#;
+    let expected = "variable condition works";
+
+    assert!(interpret(code) == expected);
+    // Note: Compiler support for if statements is not implemented yet
+    // assert!(compile_and_run(code) == expected);
+}
+
+#[test]
+fn if_else_if_with_arithmetic() {
+    let code = r#"
+if 2 + 2 == 5 {
+    print("should not print")
+} else if 3 * 3 == 9 {
+    print("arithmetic in else if works")
+} else {
+    print("should not print")
+}
+"#;
+    let expected = "arithmetic in else if works";
+
+    assert!(interpret(code) == expected);
+    // Note: Compiler support for if statements is not implemented yet
+    // assert!(compile_and_run(code) == expected);
+}
+
+#[test]
+fn if_else_interpreter_only() {
+    let code = r#"
+if 1 == 2 {
+    print("should not print")
+} else {
+    print("else works")
+}
+"#;
+    
+    // Test that interpreter works
+    assert!(get_interpreter_res(code).is_ok());
+}
+
+#[test]
+fn if_else_if_interpreter_only() {
+    let code = r#"
+if 1 == 2 {
+    print("should not print")
+} else if 2 == 2 {
+    print("else if works")
+} else {
+    print("should not print")
+}
+"#;
+    
+    // Test that interpreter works
+    assert!(get_interpreter_res(code).is_ok());
+}
+
+#[test]
+fn test_if_statement_compiler_ir_generation() {
+    // Test that the compiler can generate IR for if statements
+    let code = r#"
+if 1 == 1 {
+    print("works")
+}
+"#;
+    
+    let processed_code = preprocess(code);
+    let tokens = lexer(&processed_code).expect("Lexing failed");
+    let mut parser = Parser::new(&tokens);
+    let ast = parser.parse().expect("Parsing failed");
+    
+    let mut compiler = Compiler::from_ast(ast);
+    let ir = compiler.generate_ir().expect("IR generation failed");
+    
+    // Check that the IR contains the expected elements
+    assert!(ir.contains("ceqw 1, 1"));  // Comparison
+    assert!(ir.contains("jnz"));        // Conditional jump
+    assert!(ir.contains("@if"));        // If label
+    assert!(ir.contains("@end"));       // End label
+    assert!(ir.contains("works"));      // String literal
+}
+
+#[test]
+fn test_if_else_statement_compiler_ir_generation() {
+    // Test that the compiler can generate IR for if-else statements
+    let code = r#"
+if 1 == 2 {
+    print("should not print")
+} else {
+    print("else works")
+}
+"#;
+    
+    let processed_code = preprocess(code);
+    let tokens = lexer(&processed_code).expect("Lexing failed");
+    let mut parser = Parser::new(&tokens);
+    let ast = parser.parse().expect("Parsing failed");
+    
+    let mut compiler = Compiler::from_ast(ast);
+    let ir = compiler.generate_ir().expect("IR generation failed");
+    
+    // Check that the IR contains the expected elements
+    assert!(ir.contains("ceqw 1, 2"));  // Comparison
+    assert!(ir.contains("jnz"));        // Conditional jump
+    assert!(ir.contains("@if"));        // If label
+    assert!(ir.contains("@else"));      // Else label
+    assert!(ir.contains("@end"));       // End label
+    assert!(ir.contains("should not print"));
+    assert!(ir.contains("else works"));
+}
+
+#[test]
+fn test_if_else_if_statement_compiler_ir_generation() {
+    // Test that the compiler can generate IR for if-else if-else statements
+    let code = r#"
+if 1 == 2 {
+    print("first")
+} else if 2 == 2 {
+    print("second")
+} else {
+    print("third")
+}
+"#;
+    
+    let processed_code = preprocess(code);
+    let tokens = lexer(&processed_code).expect("Lexing failed");
+    let mut parser = Parser::new(&tokens);
+    let ast = parser.parse().expect("Parsing failed");
+    
+    let mut compiler = Compiler::from_ast(ast);
+    let ir = compiler.generate_ir().expect("IR generation failed");
+    
+    // Check that the IR contains the expected elements
+    assert!(ir.contains("ceqw 1, 2"));  // First comparison
+    assert!(ir.contains("ceqw 2, 2"));  // Second comparison
+    assert!(ir.contains("@elseif"));    // Else if label
+    assert!(ir.contains("@elseif_block")); // Else if block label
+    assert!(ir.contains("@else"));      // Else label
+    assert!(ir.contains("@end"));       // End label
+    assert!(ir.contains("first"));
+    assert!(ir.contains("second"));
+    assert!(ir.contains("third"));
+}

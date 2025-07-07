@@ -1,5 +1,5 @@
 use crate::{
-    parser::{type_check, Ast, BinExpr, BinOpKind, Bool, FuncCall, Variable, VariableDeclaration},
+    parser::{type_check, Ast, BinExpr, BinOpKind, Bool, FuncCall, IfStatement, Variable, VariableDeclaration},
     utils::ErrorType,
     Expr,
 };
@@ -55,6 +55,8 @@ impl Interpreter {
             Expr::FuncCall(func_call) => self.handle_func_call(&func_call)?,
 
             Expr::VariableDeclaration(var_decl) => self.handle_var_decl(&var_decl)?,
+
+            Expr::IfStatement(if_stmt) => self.handle_if_statement(&if_stmt)?,
 
             Expr::Identifier(id) => {
                 // If it's a valid variable, print it
@@ -124,6 +126,8 @@ impl Interpreter {
             BinOpKind::Minus => Ok(lhs - rhs),
             BinOpKind::Multiply => Ok(lhs * rhs),
             BinOpKind::Divide => Ok(lhs / rhs),
+            // Comparison operators are handled in evaluate_condition
+            _ => Err("Comparison operators should be handled in evaluate_condition".to_string()),
         }
     }
 
@@ -200,5 +204,81 @@ impl Interpreter {
         );
 
         Ok(())
+    }
+
+    /// Handles if statement evaluation
+    fn handle_if_statement(&mut self, if_stmt: &IfStatement) -> Result<(), String> {
+        // Evaluate the main if condition
+        let condition_result = self.evaluate_condition(&if_stmt.comparison)?;
+        
+        if condition_result {
+            // If condition is true, execute the main if block
+            for expr in &if_stmt.block {
+                self.evaluate_expr(expr).map_err(|e| format!("Error in if block: {e:?}"))?;
+            }
+        } else {
+            // Check else if branches
+            let mut executed = false;
+            for (else_if_condition, else_if_block) in &if_stmt.else_if_branches {
+                let else_if_result = self.evaluate_condition(else_if_condition)?;
+                if else_if_result {
+                    // Execute this else if block
+                    for expr in else_if_block {
+                        self.evaluate_expr(expr).map_err(|e| format!("Error in else if block: {e:?}"))?;
+                    }
+                    executed = true;
+                    break;
+                }
+            }
+            
+            // If no else if was executed, check for else block
+            if !executed {
+                if let Some(else_block) = &if_stmt.else_block {
+                    for expr in else_block {
+                        self.evaluate_expr(expr).map_err(|e| format!("Error in else block: {e:?}"))?;
+                    }
+                }
+            }
+        }
+        
+        Ok(())
+    }
+    
+    /// Evaluates a condition expression and returns a boolean result
+    fn evaluate_condition(&self, expr: &Expr) -> Result<bool, String> {
+        match expr {
+            Expr::Bool(Bool::True) => Ok(true),
+            Expr::Bool(Bool::False) => Ok(false),
+            Expr::BinExpr(bin_expr) => {
+                match bin_expr.kind {
+                    BinOpKind::EqualEqual | BinOpKind::NotEqual | BinOpKind::LessThan | 
+                    BinOpKind::GreaterThan | BinOpKind::LessEqual | BinOpKind::GreaterEqual => {
+                        let lhs = self.eval_operand(&bin_expr.lhs)?;
+                        let rhs = self.eval_operand(&bin_expr.rhs)?;
+                        
+                        let result = match bin_expr.kind {
+                            BinOpKind::EqualEqual => lhs == rhs,
+                            BinOpKind::NotEqual => lhs != rhs,
+                            BinOpKind::LessThan => lhs < rhs,
+                            BinOpKind::GreaterThan => lhs > rhs,
+                            BinOpKind::LessEqual => lhs <= rhs,
+                            BinOpKind::GreaterEqual => lhs >= rhs,
+                            _ => unreachable!(),
+                        };
+                        
+                        Ok(result)
+                    }
+                    _ => Err("Cannot evaluate non-comparison binary expression as condition".to_string()),
+                }
+            }
+            Expr::Identifier(id) => {
+                match self.get_var(id)? {
+                    Variable::Bool(Bool::True) => Ok(true),
+                    Variable::Bool(Bool::False) => Ok(false),
+                    _ => Err("Cannot use non-boolean variable as condition".to_string()),
+                }
+            }
+            _ => Err("Cannot evaluate expression as condition".to_string()),
+        }
     }
 }

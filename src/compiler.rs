@@ -2,7 +2,7 @@
 
 use crate::{
     args::AppArgs,
-    parser::{type_check, Ast, BinExpr, Bool, FuncCall, Variable, VariableDeclaration},
+    parser::{type_check, Ast, BinExpr, BinOpKind, Bool, FuncCall, IfStatement, Variable, VariableDeclaration},
     utils::{
         dbg, dbg_file_if_env, dbg_plain, escape_string, get_tmp_fname, measure_time, ErrorType,
     },
@@ -278,6 +278,146 @@ impl Compiler {
         Ok(())
     }
 
+    /// Handles an if statement by generating the appropriate IR for conditional execution
+    fn handle_if_statement(&mut self, if_stmt: &IfStatement) -> Result<(), String> {
+        // Generate unique labels for this if statement
+        let label_base = self.next_pk();
+        let else_label = format!("@else{}", label_base);
+        let end_label = format!("@end{}", label_base);
+        
+        // Evaluate the main if condition
+        let condition_result = self.evaluate_condition(&if_stmt.comparison)?;
+        
+        // Generate conditional jump - if condition is false, jump to else/end
+        self.ir.push_str(&format!("  jnz {}, @if{}\n", condition_result, label_base));
+        
+        // Handle else if branches
+        let mut else_if_labels = Vec::new();
+        for (i, _) in if_stmt.else_if_branches.iter().enumerate() {
+            else_if_labels.push(format!("@elseif{}{}", label_base, i));
+        }
+        
+        // Jump to first else if or else block if condition is false
+        if !if_stmt.else_if_branches.is_empty() {
+            self.ir.push_str(&format!("  jmp {}\n", else_if_labels[0]));
+        } else if if_stmt.else_block.is_some() {
+            self.ir.push_str(&format!("  jmp {}\n", else_label));
+        } else {
+            self.ir.push_str(&format!("  jmp {}\n", end_label));
+        }
+        
+        // Generate the main if block
+        self.ir.push_str(&format!("@if{}\n", label_base));
+        for expr in &if_stmt.block {
+            self.evaluate_expr(expr).map_err(|e| format!("Error in if block: {e:?}"))?;
+        }
+        self.ir.push_str(&format!("  jmp {}\n", end_label));
+        
+        // Generate else if blocks
+        for (i, (else_if_condition, else_if_block)) in if_stmt.else_if_branches.iter().enumerate() {
+            self.ir.push_str(&format!("{}\n", else_if_labels[i]));
+            
+            let else_if_condition_result = self.evaluate_condition(else_if_condition)?;
+            let else_if_block_label = format!("@elseif_block{}{}", label_base, i);
+            
+            // Jump to else if block if condition is true
+            self.ir.push_str(&format!("  jnz {}, {}\n", else_if_condition_result, else_if_block_label));
+            
+            // Jump to next else if or else block if condition is false
+            if i + 1 < if_stmt.else_if_branches.len() {
+                self.ir.push_str(&format!("  jmp {}\n", else_if_labels[i + 1]));
+            } else if if_stmt.else_block.is_some() {
+                self.ir.push_str(&format!("  jmp {}\n", else_label));
+            } else {
+                self.ir.push_str(&format!("  jmp {}\n", end_label));
+            }
+            
+            // Generate the else if block
+            self.ir.push_str(&format!("{}\n", else_if_block_label));
+            for expr in else_if_block {
+                self.evaluate_expr(expr).map_err(|e| format!("Error in else if block: {e:?}"))?;
+            }
+            self.ir.push_str(&format!("  jmp {}\n", end_label));
+        }
+        
+        // Generate else block if it exists
+        if let Some(else_block) = &if_stmt.else_block {
+            self.ir.push_str(&format!("{}\n", else_label));
+            for expr in else_block {
+                self.evaluate_expr(expr).map_err(|e| format!("Error in else block: {e:?}"))?;
+            }
+        }
+        
+        // End label
+        self.ir.push_str(&format!("{}\n", end_label));
+        
+        Ok(())
+    }
+
+    /// Evaluates a condition expression and returns the temporary variable containing the result
+    fn evaluate_condition(&mut self, expr: &Expr) -> Result<String, String> {
+        match expr {
+            Expr::Bool(Bool::True) => {
+                let pk = self.next_pk();
+                self.ir.push_str(&format!("  %v{} =w copy 1\n", pk));
+                Ok(format!("%v{}", pk))
+            }
+            Expr::Bool(Bool::False) => {
+                let pk = self.next_pk();
+                self.ir.push_str(&format!("  %v{} =w copy 0\n", pk));
+                Ok(format!("%v{}", pk))
+            }
+            Expr::BinExpr(bin_expr) => {
+                match bin_expr.kind {
+                    BinOpKind::EqualEqual | BinOpKind::NotEqual | BinOpKind::LessThan | 
+                    BinOpKind::GreaterThan | BinOpKind::LessEqual | BinOpKind::GreaterEqual => {
+                        // This is a comparison operation - generate comparison IR
+                        self.handle_bin_expr(bin_expr)
+                    }
+                    _ => {
+                        // For other operations, evaluate and check if non-zero
+                        let result = self.handle_bin_expr(bin_expr)?;
+                        let pk = self.next_pk();
+                        self.ir.push_str(&format!("  %v{} =w cnew {}, 0\n", pk, result));
+                        Ok(format!("%v{}", pk))
+                    }
+                }
+            }
+            Expr::Identifier(ident) => {
+                // Check if it's a boolean variable
+                let var = self.get_var(ident)?;
+                match var {
+                    Variable::Bool(Bool::True) => {
+                        let pk = self.next_pk();
+                        self.ir.push_str(&format!("  %v{} =w copy 1\n", pk));
+                        Ok(format!("%v{}", pk))
+                    }
+                    Variable::Bool(Bool::False) => {
+                        let pk = self.next_pk();
+                        self.ir.push_str(&format!("  %v{} =w copy 0\n", pk));
+                        Ok(format!("%v{}", pk))
+                    }
+                    Variable::Number(n) => {
+                        let pk = self.next_pk();
+                        self.ir.push_str(&format!("  %v{} =w cnew {}, 0\n", pk, n));
+                        Ok(format!("%v{}", pk))
+                    }
+                    _ => Err(format!("Cannot use variable '{}' as condition", ident))
+                }
+            }
+            Expr::Number(n) => {
+                let pk = self.next_pk();
+                if *n == 0 {
+                    self.ir.push_str(&format!("  %v{} =w copy 0\n", pk));
+                } else {
+                    self.ir.push_str(&format!("  %v{} =w copy 1\n", pk));
+                }
+                Ok(format!("%v{}", pk))
+            }
+            _ => Err(format!("Unsupported condition expression: {:?}", expr))
+        }
+    }
+
     /// Evaluate one expression
     pub fn evaluate_expr(&mut self, expr: &Expr) -> Result<(), ErrorType> {
         match expr {
@@ -286,6 +426,8 @@ impl Compiler {
             Expr::VariableDeclaration(variable_declaration) => {
                 self.handle_var_decl(variable_declaration)?
             }
+
+            Expr::IfStatement(if_stmt) => self.handle_if_statement(if_stmt)?,
 
             Expr::Block(block) => {
                 for node in block {
